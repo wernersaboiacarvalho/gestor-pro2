@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "vercel-build": "npx prisma generate && npx next build",
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -23,7 +25,7 @@
     "lucide-react": "^1.16.0",
     "next": "^15.5.18",
     "next-auth": "5.0.0-beta.31",
-    "nodemailer": "^8.0.8",
+    "nodemailer": "^7.0.7",
     "pg": "^8.21.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
