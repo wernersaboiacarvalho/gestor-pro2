@@ -66,10 +66,12 @@ export async function POST(request: Request) {
       orderNumber,
       totalValue,
       items: items?.length ? {
-        create: items.map((item) => ({
+          create: items.map((item) => ({
           ...item,
           tenantId,
           totalValue: item.quantity * item.unitValue,
+          partnerId: item.partnerId ?? null,
+          partnerCost: item.partnerCost ?? null,
         })),
       } : undefined,
     },

@@ -48,6 +48,8 @@ export const serviceOrderSchema = z.object({
     description: z.string().min(1, "Descrição do item é obrigatória"),
     quantity: z.number().int().min(1),
     unitValue: z.number().min(0),
+    partnerId: z.string().optional().nullable(),
+    partnerCost: z.number().min(0).optional(),
     inventoryItemId: z.string().optional().nullable(),
   })).optional(),
 })

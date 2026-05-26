@@ -19,7 +19,7 @@ export default async function ServiceOrderDetailPage({ params }: Props) {
     include: {
       vehicle: { select: { plate: true, brand: true, model: true, year: true, color: true } },
       mechanic: { select: { id: true, name: true } },
-      items: true,
+      items: { include: { partner: { select: { name: true } } } },
     },
   })
 
@@ -44,6 +44,9 @@ export default async function ServiceOrderDetailPage({ params }: Props) {
       quantity: item.quantity,
       unitValue: Number(item.unitValue),
       totalValue: Number(item.totalValue),
+      partnerId: item.partnerId,
+      partnerCost: item.partnerCost ? Number(item.partnerCost) : null,
+      partnerName: item.partner?.name ?? null,
     })),
   }
 

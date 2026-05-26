@@ -11,7 +11,7 @@ export async function GET(
     include: {
       vehicle: { select: { plate: true, brand: true, model: true, year: true, color: true } },
       mechanic: { select: { id: true, name: true } },
-      items: true,
+      items: { include: { partner: { select: { name: true } } } },
     },
   })
 
@@ -37,13 +37,15 @@ export async function PATCH(
       ...(items ? {
         items: {
           deleteMany: {},
-          create: items.map((item: { type: string; description: string; quantity: number; unitValue: number; tenantId: string; inventoryItemId?: string }) => ({
+          create: items.map((item: { type: string; description: string; quantity: number; unitValue: number; tenantId: string; partnerId?: string | null; partnerCost?: number | null; inventoryItemId?: string | null }) => ({
             type: item.type,
             description: item.description,
             quantity: item.quantity,
             unitValue: item.unitValue,
             tenantId: item.tenantId,
             totalValue: item.quantity * item.unitValue,
+            partnerId: item.partnerId ?? null,
+            partnerCost: item.partnerCost ?? null,
             inventoryItemId: item.inventoryItemId,
           })),
         },
@@ -51,7 +53,7 @@ export async function PATCH(
     },
     include: {
       vehicle: { select: { plate: true, brand: true, model: true } },
-      items: true,
+      items: { include: { partner: { select: { name: true } } } },
     },
   })
 

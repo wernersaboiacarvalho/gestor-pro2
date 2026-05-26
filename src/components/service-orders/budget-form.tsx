@@ -20,7 +20,7 @@ interface Props {
     description?: string
     notes?: string
     discount?: number
-    items?: { type: "service" | "part"; description: string; quantity: number; unitValue: number }[]
+    items?: { type: "service" | "part"; description: string; quantity: number; unitValue: number; partnerId?: string | null; partnerCost?: number }[]
   }
 }
 
@@ -29,6 +29,7 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
   const isEditing = !!defaultValues?.id
   const [vehicles, setVehicles] = useState<{ id: string; plate: string; brand: string; model: string }[]>([])
   const [mechanics, setMechanics] = useState<{ id: string; name: string }[]>([])
+  const [partners, setPartners] = useState<{ id: string; name: string }[]>([])
   const [deleting, setDeleting] = useState(false)
 
   const {
@@ -46,7 +47,7 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
       description: defaultValues?.description ?? "",
       notes: defaultValues?.notes ?? "",
       discount: defaultValues?.discount ?? 0,
-      items: defaultValues?.items?.length ? defaultValues.items : [{ type: "service" as const, description: "", quantity: 1, unitValue: 0 }],
+      items: defaultValues?.items?.length ? defaultValues.items.map(i => ({ ...i, partnerId: i.partnerId ?? null, partnerCost: i.partnerCost ?? undefined })) : [{ type: "service" as const, description: "", quantity: 1, unitValue: 0, partnerId: null, partnerCost: undefined }],
     },
   })
 
@@ -62,6 +63,10 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
       fetch(`/api/mechanics?tenantId=${tenantId}`)
         .then((r) => r.json())
         .then(setMechanics)
+        .catch(() => {})
+      fetch(`/api/partners?tenantId=${tenantId}`)
+        .then((r) => r.json())
+        .then(setPartners)
         .catch(() => {})
     }
   }, [tenantId])
@@ -183,7 +188,7 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => append({ type: "service" as const, description: "", quantity: 1, unitValue: 0 })}
+              onClick={() => append({ type: "service" as const, description: "", quantity: 1, unitValue: 0, partnerId: null, partnerCost: undefined })}
             >
               <Plus className="mr-1 size-3.5" />
               Adicionar Item
@@ -192,21 +197,32 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
 
           <div className="divide-y">
             {fields.map((field, index) => (
-              <div key={field.id} className="grid gap-3 p-4 sm:grid-cols-12 items-start">
-                <div className="sm:col-span-2">
+              <div key={field.id} className="grid gap-2 p-4 sm:grid-cols-12 items-start">
+                <div className="sm:col-span-1">
                   <select {...register(`items.${index}.type`)} className="w-full rounded-lg border px-2 py-1.5 text-xs bg-white dark:bg-zinc-900">
                     <option value="service">Serviço</option>
                     <option value="part">Peça</option>
                   </select>
                 </div>
-                <div className="sm:col-span-4">
+                <div className="sm:col-span-3">
                   <input {...register(`items.${index}.description`)} placeholder="Descrição" className="w-full rounded-lg border px-2 py-1.5 text-sm" />
                 </div>
                 <div className="sm:col-span-1">
                   <input type="number" {...register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder="Qtd" className="w-full rounded-lg border px-2 py-1.5 text-sm text-center" />
                 </div>
+                <div className="sm:col-span-1">
+                  <input type="number" step="0.01" {...register(`items.${index}.unitValue`, { valueAsNumber: true })} placeholder="R$" className="w-full rounded-lg border px-2 py-1.5 text-sm" />
+                </div>
                 <div className="sm:col-span-2">
-                  <input type="number" step="0.01" {...register(`items.${index}.unitValue`, { valueAsNumber: true })} placeholder="R$ 0,00" className="w-full rounded-lg border px-2 py-1.5 text-sm" />
+                  <select {...register(`items.${index}.partnerId`)} className="w-full rounded-lg border px-2 py-1.5 text-xs bg-white dark:bg-zinc-900">
+                    <option value="">Sem terceirizado</option>
+                    {partners.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="sm:col-span-1">
+                  <input type="number" step="0.01" {...register(`items.${index}.partnerCost`, { valueAsNumber: true })} placeholder="Custo" className="w-full rounded-lg border px-2 py-1.5 text-xs" />
                 </div>
                 <div className="sm:col-span-2">
                   <p className="py-1.5 text-sm font-semibold tabular-nums text-right">

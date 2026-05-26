@@ -45,6 +45,9 @@ interface OrderItem {
   quantity: number
   unitValue: number
   totalValue: number
+  partnerId: string | null
+  partnerCost: number | null
+  partnerName: string | null
 }
 
 interface OrderData {
@@ -185,6 +188,7 @@ export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; te
               <tr className="border-b text-xs text-muted-foreground">
                 <th className="py-3 pl-5 text-left font-medium">Tipo</th>
                 <th className="py-3 text-left font-medium">Descrição</th>
+                <th className="py-3 text-left font-medium">Terceirizado</th>
                 <th className="py-3 text-right font-medium">Qtd</th>
                 <th className="py-3 text-right font-medium">Valor Un.</th>
                 <th className="py-3 pr-5 text-right font-medium">Total</th>
@@ -198,7 +202,19 @@ export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; te
                       {item.type === "service" ? "Serviço" : "Peça"}
                     </span>
                   </td>
-                  <td className="py-3">{item.description}</td>
+                  <td className="py-3 max-w-[200px]">
+                    <p className="truncate">{item.description}</p>
+                    {item.partnerName && item.partnerCost && (
+                      <p className="text-xs text-muted-foreground mt-0.5">Custo: {formatCurrency(item.partnerCost)}</p>
+                    )}
+                  </td>
+                  <td className="py-3">
+                    {item.partnerName ? (
+                      <span className="text-xs font-medium text-violet-600 dark:text-violet-400">{item.partnerName}</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="py-3 text-right tabular-nums">{item.quantity}</td>
                   <td className="py-3 text-right tabular-nums">{formatCurrency(item.unitValue)}</td>
                   <td className="py-3 pr-5 text-right tabular-nums font-medium">{formatCurrency(item.quantity * item.unitValue)}</td>
@@ -207,17 +223,17 @@ export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; te
             </tbody>
             <tfoot>
               <tr className="border-t text-sm">
-                <td colSpan={4} className="py-3 pl-5 text-right text-muted-foreground">Subtotal</td>
+                <td colSpan={5} className="py-3 pl-5 text-right text-muted-foreground">Subtotal</td>
                 <td className="py-3 pr-5 text-right tabular-nums">{formatCurrency(totalItems)}</td>
               </tr>
               {order.discount > 0 && (
                 <tr className="text-sm text-red-600">
-                  <td colSpan={4} className="py-1 pl-5 text-right">Desconto</td>
+                  <td colSpan={5} className="py-1 pl-5 text-right">Desconto</td>
                   <td className="py-1 pr-5 text-right tabular-nums">-{formatCurrency(order.discount)}</td>
                 </tr>
               )}
               <tr className="text-sm font-bold">
-                <td colSpan={4} className="py-3 pl-5 text-right">Total</td>
+                <td colSpan={5} className="py-3 pl-5 text-right">Total</td>
                 <td className="py-3 pr-5 text-right tabular-nums text-primary">{formatCurrency(final)}</td>
               </tr>
             </tfoot>
@@ -233,6 +249,37 @@ export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; te
         <div className="rounded-lg border bg-white p-4 dark:bg-zinc-900">
           <p className="text-xs font-medium text-muted-foreground mb-1">Observações</p>
           <p className="text-sm whitespace-pre-wrap">{order.notes}</p>
+        </div>
+      )}
+
+      {/* Financial Summary */}
+      {order.items.some((i) => i.partnerCost) && (
+        <div className="rounded-lg border bg-white p-6 dark:bg-zinc-900">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">Resumo Financeiro</h2>
+          <div className="space-y-2 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Receita total</span>
+              <span className="tabular-nums font-medium">{formatCurrency(totalItems)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Custo terceirizados</span>
+              <span className="tabular-nums text-red-600">
+                -{formatCurrency(order.items.reduce((s, i) => s + (i.partnerCost ?? 0) * (i.partnerId ? i.quantity : 0), 0))}
+              </span>
+            </div>
+            {order.discount > 0 && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Desconto</span>
+                <span className="tabular-nums text-red-600">-{formatCurrency(order.discount)}</span>
+              </div>
+            )}
+            <div className="flex justify-between border-t pt-2 font-semibold">
+              <span>Margem da oficina</span>
+              <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
+                {formatCurrency(final - order.items.reduce((s, i) => s + (i.partnerCost ?? 0) * (i.partnerId ? i.quantity : 0), 0))}
+              </span>
+            </div>
+          </div>
         </div>
       )}
     </div>

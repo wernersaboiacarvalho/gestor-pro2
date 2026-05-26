@@ -138,11 +138,15 @@ model ServiceOrderItem {
   quantity        Int          @default(1)
   unitValue       Decimal      @default(0)
   totalValue      Decimal      @default(0)
+  partnerId       String?
+  partner         Partner?     @relation(fields: [partnerId], references: [id])
+  partnerCost     Decimal?     // custo real do terceirizado
   inventoryItemId String?
   inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
 
   @@index([serviceOrderId])
   @@index([tenantId])
+  @@index([partnerId])
 }
 
 model Mechanic {
@@ -241,6 +245,8 @@ model Partner {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  serviceOrderItems ServiceOrderItem[]
 
   @@index([tenantId, active])
   @@index([tenantId, serviceType])
