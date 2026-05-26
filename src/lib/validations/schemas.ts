@@ -42,6 +42,7 @@ export const serviceOrderSchema = z.object({
   mechanicId: z.string().optional().nullable(),
   description: z.string().min(3, "Descrição é obrigatória"),
   notes: z.string().optional(),
+  discount: z.number().min(0),
   items: z.array(z.object({
     type: z.enum(["service", "part"]),
     description: z.string().min(1, "Descrição do item é obrigatória"),

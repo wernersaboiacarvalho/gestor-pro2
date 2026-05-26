@@ -106,20 +106,23 @@ model ServiceOrder {
   mechanic    User?          @relation("AssignedMechanic", fields: [mechanicId], references: [id])
 
   orderNumber String
-  status      String         @default("pending") // pending, in_progress, completed, cancelled
+  type        String         @default("budget")   // "budget" | "service_order"
+  status      String         @default("draft")     // budget: draft, sent, approved, rejected | service_order: pending, in_progress, completed, delivered, cancelled
   description String
   totalValue  Decimal        @default(0)
   discount    Decimal        @default(0)
   notes       String?
+  approvedAt  DateTime?
   startedAt   DateTime?
   completedAt DateTime?
+  deliveredAt DateTime?
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
   items ServiceOrderItem[]
 
   @@unique([tenantId, orderNumber])
-  @@index([tenantId, status, createdAt])
+  @@index([tenantId, type, status, createdAt])
   @@index([tenantId, vehicleId])
   @@index([tenantId, mechanicId])
 }
