@@ -60,7 +60,7 @@ export const mechanicSchema = z.object({
   phone: z.string().optional(),
   cpf: z.string().optional(),
   specialty: z.string().optional(),
-  active: z.boolean().default(true),
+  active: z.boolean(),
 })
 
 export const inventorySchema = z.object({

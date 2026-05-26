@@ -19,12 +19,12 @@ export default async function EditCustomerPage({ params }: Props) {
       defaultValues={{
         id: customer.id,
         name: customer.name,
-        cpf: customer.cpf,
-        cnpj: customer.cnpj,
+        cpf: customer.cpf ?? undefined,
+        cnpj: customer.cnpj ?? undefined,
         phone: customer.phone,
-        email: customer.email,
-        address: customer.address,
-        notes: customer.notes,
+        email: customer.email ?? undefined,
+        address: customer.address ?? undefined,
+        notes: customer.notes ?? undefined,
       }}
     />
   )

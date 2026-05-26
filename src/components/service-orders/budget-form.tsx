@@ -60,7 +60,7 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
         .then(setVehicles)
         .catch(() => {})
 
-      fetch(`/api/mechanics?tenantId=${tenantId}`)
+      fetch(`/api/users?tenantId=${tenantId}&role=mechanic`)
         .then((r) => r.json())
         .then(setMechanics)
         .catch(() => {})
