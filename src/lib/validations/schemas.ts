@@ -79,6 +79,18 @@ export const tenantSchema = z.object({
   plan: z.string().default("free"),
 })
 
+export const partnerSchema = z.object({
+  name: z.string().min(2, "Nome é obrigatório"),
+  cnpj: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email("Email inválido").optional().or(z.literal("")),
+  contactName: z.string().optional(),
+  serviceType: z.string().optional(),
+  address: z.string().optional(),
+  notes: z.string().optional(),
+  active: z.boolean(),
+})
+
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
 export type CustomerInput = z.infer<typeof customerSchema>
@@ -87,3 +99,4 @@ export type ServiceOrderInput = z.infer<typeof serviceOrderSchema>
 export type MechanicInput = z.infer<typeof mechanicSchema>
 export type InventoryInput = z.infer<typeof inventorySchema>
 export type TenantInput = z.infer<typeof tenantSchema>
+export type PartnerInput = z.infer<typeof partnerSchema>

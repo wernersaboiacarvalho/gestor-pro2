@@ -24,6 +24,7 @@ model Tenant {
   mechanics      Mechanic[]
   inventoryItems InventoryItem[]
   suppliers      Supplier[]
+  partners         Partner[]
   financialRecords FinancialRecord[]
 
   @@index([slug])
@@ -219,6 +220,28 @@ model Supplier {
 
   @@index([tenantId, name])
   @@index([tenantId, cnpj])
+}
+
+model Partner {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  name        String
+  cnpj        String?
+  phone       String?
+  email       String?
+  contactName String?
+  serviceType String?  // funilaria, retífica, ar condicionado, etc.
+  address     String?
+  notes       String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([tenantId, active])
+  @@index([tenantId, serviceType])
+  @@index([tenantId, name])
 }
 
 model FinancialRecord {
