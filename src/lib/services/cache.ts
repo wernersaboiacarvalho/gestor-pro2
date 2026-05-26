@@ -15,6 +15,7 @@ export function ttl(key: string): number {
 }
 
 export async function getCached<T>(key: string): Promise<T | null> {
+  if (!redis) return null
   try {
     const data = await redis.get<T>(key)
     return data ?? null
@@ -24,10 +25,12 @@ export async function getCached<T>(key: string): Promise<T | null> {
 }
 
 export async function setCached<T>(key: string, data: T): Promise<void> {
+  if (!redis) return
   await redis.setex(key, ttl(key), JSON.stringify(data))
 }
 
 export async function invalidateCache(pattern: string) {
+  if (!redis) return
   const keys = await redis.keys(pattern)
   if (keys.length > 0) {
     await redis.del(...keys)
