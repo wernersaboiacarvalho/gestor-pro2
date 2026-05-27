@@ -61,7 +61,7 @@ export function WorkspaceShell({ tenant, children }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
+    <div className="grid min-h-screen grid-cols-[16rem_minmax(0,1fr)] bg-zinc-50 dark:bg-zinc-950">
       <aside className="flex w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shrink-0">
         <div className="flex h-16 items-center gap-3 border-b border-zinc-200 px-6 dark:border-zinc-800">
           <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
@@ -122,8 +122,8 @@ export function WorkspaceShell({ tenant, children }: Props) {
         </div>
       </aside>
 
-      <main className="flex-1 min-w-0">
-        <div className="p-4 lg:p-8">{children}</div>
+      <main className="min-w-0">
+        <div className="w-full max-w-none p-4 lg:p-8">{children}</div>
       </main>
     </div>
   )
