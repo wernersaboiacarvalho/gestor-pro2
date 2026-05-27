@@ -16,6 +16,7 @@ import {
   LogOut,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { signOut } from "next-auth/react"
 
 interface TenantInfo {
   name: string
@@ -113,16 +114,14 @@ export function WorkspaceShell({ tenant, children }: Props) {
               {item.label}
             </Link>
           ))}
-          <form action="/api/auth/signout" method="POST">
-            <Button
-              type="submit"
-              variant="ghost"
-              className="mt-2 w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
-            >
-              <LogOut className="size-4" />
-              Sair
-            </Button>
-          </form>
+          <Button
+            onClick={() => signOut()}
+            variant="ghost"
+            className="mt-2 w-full justify-start gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+          >
+            <LogOut className="size-4" />
+            Sair
+          </Button>
         </div>
       </aside>
 
