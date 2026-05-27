@@ -112,4 +112,15 @@ export type MechanicInput = z.infer<typeof mechanicSchema>
 export type InventoryInput = z.infer<typeof inventorySchema>
 export type TenantInput = z.infer<typeof tenantSchema>
 export type SupplierInput = z.infer<typeof supplierSchema>
+export const financialRecordSchema = z.object({
+  type: z.enum(["receivable", "payable"]),
+  description: z.string().min(2, "Descrição é obrigatória"),
+  value: z.number().min(0, "Valor deve ser positivo"),
+  status: z.enum(["pending", "paid", "cancelled"]),
+  dueDate: z.string().min(1, "Data de vencimento é obrigatória"),
+  category: z.string().optional(),
+  serviceOrderId: z.string().optional().nullable(),
+})
+
 export type PartnerInput = z.infer<typeof partnerSchema>
+export type FinancialRecordInput = z.infer<typeof financialRecordSchema>
