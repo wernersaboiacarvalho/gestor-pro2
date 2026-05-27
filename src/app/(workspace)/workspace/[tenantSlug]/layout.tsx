@@ -1,6 +1,7 @@
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { auth } from "@/lib/auth/auth"
 import { WorkspaceShell } from "@/components/workspace/sidebar"
+import { Toaster } from "@/components/shared/toaster"
 
 interface Props {
   children: React.ReactNode
@@ -23,6 +24,7 @@ export default async function WorkspaceLayout({ children, params }: Props) {
   return (
     <WorkspaceShell tenant={tenant}>
       {children}
+      <Toaster />
     </WorkspaceShell>
   )
 }

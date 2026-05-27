@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
+import { toast } from "sonner"
 
 interface Props {
   tenantSlug: string
@@ -53,26 +54,31 @@ export function FinancialForm({ tenantSlug, tenantId, defaultValues }: Props) {
   const selectedType = watch("type")
 
   async function onSubmit(data: FinancialRecordInput) {
-    const url = isEditing
-      ? `/api/financial-records/${defaultValues!.id}`
-      : `/api/financial-records?tenantId=${tenantId}`
-    const method = isEditing ? "PATCH" : "POST"
-    const body = { ...data, category: data.category || undefined, serviceOrderId: undefined }
+    try {
+      const url = isEditing
+        ? `/api/financial-records/${defaultValues!.id}`
+        : `/api/financial-records?tenantId=${tenantId}`
+      const method = isEditing ? "PATCH" : "POST"
+      const body = { ...data, category: data.category || undefined, serviceOrderId: undefined }
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
 
-    if (!res.ok) {
-      const json = await res.json()
-      setError("root", { message: json.error ?? "Erro ao salvar" })
-      return
+      if (!res.ok) {
+        const json = await res.json()
+        setError("root", { message: json.error ?? "Erro ao salvar" })
+        return
+      }
+
+      toast.success(isEditing ? "Registro financeiro atualizado com sucesso!" : "Registro financeiro criado com sucesso!")
+      router.push(`/workspace/${tenantSlug}/financeiro`)
+      router.refresh()
+    } catch {
+      toast.error("Erro ao salvar registro financeiro")
     }
-
-    router.push(`/workspace/${tenantSlug}/financeiro`)
-    router.refresh()
   }
 
   return (

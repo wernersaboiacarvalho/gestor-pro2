@@ -1,4 +1,5 @@
 import { BudgetForm } from "@/components/service-orders/budget-form"
+import { DeleteButton } from "@/components/shared/delete-button"
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
 import { notFound } from "next/navigation"
@@ -19,23 +20,34 @@ export default async function EditBudgetPage({ params }: Props) {
   if (!order) notFound()
 
   return (
-    <BudgetForm
-      tenantSlug={tenantSlug}
-      tenantId={tenant.id}
-      defaultValues={{
-        id: order.id,
-        vehicleId: order.vehicleId,
-        mechanicId: order.mechanicId,
-        description: order.description,
-        notes: order.notes ?? undefined,
-        discount: Number(order.discount),
-        items: order.items.map((i) => ({
-          type: i.type as "service" | "part",
-          description: i.description,
-          quantity: i.quantity,
-          unitValue: Number(i.unitValue),
-        })),
-      }}
-    />
+    <>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Editando Orçamento</h1>
+        <DeleteButton
+          id={id}
+          endpoint={`/api/service-orders/${id}`}
+          label="o orçamento"
+          redirectTo={`/workspace/${tenantSlug}/ordens-servico`}
+        />
+      </div>
+      <BudgetForm
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        defaultValues={{
+          id: order.id,
+          vehicleId: order.vehicleId,
+          mechanicId: order.mechanicId,
+          description: order.description,
+          notes: order.notes ?? undefined,
+          discount: Number(order.discount),
+          items: order.items.map((i) => ({
+            type: i.type as "service" | "part",
+            description: i.description,
+            quantity: i.quantity,
+            unitValue: Number(i.unitValue),
+          })),
+        }}
+      />
+    </>
   )
 }

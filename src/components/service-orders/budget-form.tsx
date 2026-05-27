@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react"
 import Link from "next/link"
 import { useState, useEffect } from "react"
+import { toast } from "sonner"
 
 interface Props {
   tenantSlug: string
@@ -30,7 +31,6 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
   const [vehicles, setVehicles] = useState<{ id: string; plate: string; brand: string; model: string }[]>([])
   const [mechanics, setMechanics] = useState<{ id: string; name: string }[]>([])
   const [partners, setPartners] = useState<{ id: string; name: string }[]>([])
-  const [deleting, setDeleting] = useState(false)
 
   const {
     register,
@@ -72,40 +72,37 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
   }, [tenantId])
 
   async function onSubmit(data: ServiceOrderInput) {
-    const url = isEditing
-      ? `/api/service-orders/${defaultValues!.id}`
-      : `/api/service-orders?tenantId=${tenantId}`
+    try {
+      const url = isEditing
+        ? `/api/service-orders/${defaultValues!.id}`
+        : `/api/service-orders?tenantId=${tenantId}`
 
-    const method = isEditing ? "PATCH" : "POST"
+      const method = isEditing ? "PATCH" : "POST"
 
-    const payload = {
-      ...data,
-      ...(isEditing ? {} : {}), // items are managed separately via PATCH
+      const payload = {
+        ...data,
+        ...(isEditing ? {} : {}), // items are managed separately via PATCH
+      }
+
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+
+      if (!res.ok) {
+        const json = await res.json()
+        setError("root", { message: json.error ?? "Erro ao salvar" })
+        return
+      }
+
+      const result = await res.json()
+      toast.success(isEditing ? "Ordem de serviço atualizada com sucesso!" : "Ordem de serviço criada com sucesso!")
+      router.push(`/workspace/${tenantSlug}/ordens-servico/${result.id}`)
+      router.refresh()
+    } catch {
+      toast.error("Erro ao salvar ordem de serviço")
     }
-
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) {
-      const json = await res.json()
-      setError("root", { message: json.error ?? "Erro ao salvar" })
-      return
-    }
-
-    const result = await res.json()
-    router.push(`/workspace/${tenantSlug}/ordens-servico/${result.id}`)
-    router.refresh()
-  }
-
-  async function handleDelete() {
-    if (!defaultValues?.id || !confirm("Tem certeza?")) return
-    setDeleting(true)
-    await fetch(`/api/service-orders/${defaultValues.id}`, { method: "DELETE" })
-    router.push(`/workspace/${tenantSlug}/ordens-servico`)
-    router.refresh()
   }
 
   return (
@@ -123,12 +120,6 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
             </h1>
           </div>
         </div>
-        {isEditing && (
-          <Button variant="ghost" className="text-red-600" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="mr-2 size-4" />
-            {deleting ? "Excluindo..." : "Excluir"}
-          </Button>
-        )}
       </div>
 
       {errors.root && (

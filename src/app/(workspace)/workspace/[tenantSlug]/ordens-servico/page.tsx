@@ -2,18 +2,28 @@ import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
 import type { Prisma } from "@/generated/prisma"
 import Link from "next/link"
-import { Plus, Search } from "lucide-react"
+import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { SearchInput } from "@/components/shared/search-input"
+import { Pagination } from "@/components/shared/pagination"
 import { ServiceOrderList } from "@/components/service-orders/list"
+import type { Metadata } from "next"
 
 interface Props {
   params: Promise<{ tenantSlug: string }>
-  searchParams: Promise<{ tab?: string; q?: string }>
+  searchParams: Promise<{ tab?: string; q?: string; page?: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { tenantSlug } = await params
+  return { title: `Ordens de Serviço - ${tenantSlug}` }
 }
 
 export default async function ServiceOrdersPage({ params, searchParams }: Props) {
   const { tenantSlug } = await params
-  const { tab, q } = await searchParams
+  const { tab, q, page: rawPage } = await searchParams
+  const page = Math.max(1, Number(rawPage) || 1)
+  const PAGE_SIZE = 20
   const tenant = await getTenantContext(tenantSlug)
   const activeTab = tab === "os" ? "service_order" : "budget"
 
@@ -26,6 +36,8 @@ export default async function ServiceOrdersPage({ params, searchParams }: Props)
     ]
   }
 
+  const total = await prisma.serviceOrder.count({ where })
+
   const orders = await prisma.serviceOrder.findMany({
     where,
     include: {
@@ -34,6 +46,8 @@ export default async function ServiceOrdersPage({ params, searchParams }: Props)
       _count: { select: { items: true } },
     },
     orderBy: { createdAt: "desc" },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   })
 
   // Counts for tabs
@@ -41,6 +55,8 @@ export default async function ServiceOrdersPage({ params, searchParams }: Props)
     prisma.serviceOrder.count({ where: { tenantId: tenant.id, type: "budget" } }),
     prisma.serviceOrder.count({ where: { tenantId: tenant.id, type: "service_order" } }),
   ])
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const serializedOrders = orders.map((o) => ({
     id: o.id,
@@ -97,21 +113,13 @@ export default async function ServiceOrdersPage({ params, searchParams }: Props)
         </Link>
       </div>
 
-      {/* Search */}
-      <form className="mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            name="q"
-            defaultValue={q}
-            placeholder="Buscar por número, descrição ou placa..."
-            className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-10 pr-4 text-sm dark:border-zinc-800 dark:bg-zinc-900"
-          />
-          {q && <input type="hidden" name="tab" value={tab ?? ""} />}
-        </div>
-      </form>
+      <div className="mb-6">
+        <SearchInput placeholder="Buscar por número, descrição ou placa..." basePath={`/workspace/${tenantSlug}/ordens-servico`} defaultValue={q} />
+      </div>
 
       <ServiceOrderList orders={serializedOrders} tenantSlug={tenantSlug} />
+
+      <Pagination currentPage={page} totalPages={totalPages} basePath={`/workspace/${tenantSlug}/ordens-servico`} searchParams={{ q, tab }} />
     </div>
   )
 }

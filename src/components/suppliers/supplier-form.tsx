@@ -5,9 +5,9 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { supplierSchema, type SupplierInput } from "@/lib/validations/schemas"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { toast } from "sonner"
 
 interface Props {
   tenantSlug: string
@@ -26,7 +26,6 @@ interface Props {
 export function SupplierForm({ tenantSlug, tenantId, defaultValues }: Props) {
   const router = useRouter()
   const isEditing = !!defaultValues?.id
-  const [deleting, setDeleting] = useState(false)
 
   const {
     register,
@@ -46,34 +45,31 @@ export function SupplierForm({ tenantSlug, tenantId, defaultValues }: Props) {
   })
 
   async function onSubmit(data: SupplierInput) {
-    const url = isEditing
-      ? `/api/suppliers/${defaultValues!.id}`
-      : `/api/suppliers?tenantId=${tenantId}`
-    const method = isEditing ? "PATCH" : "POST"
-    const body = { ...data, email: data.email || undefined }
+    try {
+      const url = isEditing
+        ? `/api/suppliers/${defaultValues!.id}`
+        : `/api/suppliers?tenantId=${tenantId}`
+      const method = isEditing ? "PATCH" : "POST"
+      const body = { ...data, email: data.email || undefined }
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    })
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
 
-    if (!res.ok) {
-      const json = await res.json()
-      setError("root", { message: json.error ?? "Erro ao salvar" })
-      return
+      if (!res.ok) {
+        const json = await res.json()
+        setError("root", { message: json.error ?? "Erro ao salvar" })
+        return
+      }
+
+      toast.success(isEditing ? "Fornecedor atualizado com sucesso!" : "Fornecedor criado com sucesso!")
+      router.push(`/workspace/${tenantSlug}/fornecedores`)
+      router.refresh()
+    } catch {
+      toast.error("Erro ao salvar fornecedor")
     }
-
-    router.push(`/workspace/${tenantSlug}/fornecedores`)
-    router.refresh()
-  }
-
-  async function handleDelete() {
-    if (!defaultValues?.id || !confirm("Tem certeza que deseja excluir este fornecedor?")) return
-    setDeleting(true)
-    await fetch(`/api/suppliers/${defaultValues.id}`, { method: "DELETE" })
-    router.push(`/workspace/${tenantSlug}/fornecedores`)
-    router.refresh()
   }
 
   return (
@@ -90,12 +86,6 @@ export function SupplierForm({ tenantSlug, tenantId, defaultValues }: Props) {
             <p className="mt-1 text-sm text-muted-foreground">{isEditing ? defaultValues?.name : "Cadastre um novo fornecedor"}</p>
           </div>
         </div>
-        {isEditing && (
-          <Button variant="ghost" className="text-red-600" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="mr-2 size-4" />
-            {deleting ? "Excluindo..." : "Excluir"}
-          </Button>
-        )}
       </div>
 
       {errors.root && (

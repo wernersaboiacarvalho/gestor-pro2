@@ -3,16 +3,26 @@ import { prisma } from "@/lib/db/prisma"
 import Link from "next/link"
 import { Plus, Package, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { SearchInput } from "@/components/shared/search-input"
+import { Pagination } from "@/components/shared/pagination"
 import { InventoryFilters } from "./inventory-filters"
+import type { Metadata } from "next"
 
 interface Props {
   params: Promise<{ tenantSlug: string }>
-  searchParams: Promise<{ q?: string; category?: string }>
+  searchParams: Promise<{ q?: string; category?: string; page?: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { tenantSlug } = await params
+  return { title: `Estoque - ${tenantSlug}` }
 }
 
 export default async function InventoryPage({ params, searchParams }: Props) {
   const { tenantSlug } = await params
-  const { q, category } = await searchParams
+  const { q, category, page: rawPage } = await searchParams
+  const page = Math.max(1, Number(rawPage) || 1)
+  const PAGE_SIZE = 20
   const tenant = await getTenantContext(tenantSlug)
 
   const where: Record<string, unknown> = { tenantId: tenant.id }
@@ -24,10 +34,14 @@ export default async function InventoryPage({ params, searchParams }: Props) {
   }
   if (category) where.category = category
 
+  const total = await prisma.inventoryItem.count({ where: where as Record<string, unknown> })
+
   const items = await prisma.inventoryItem.findMany({
     where: where as Record<string, unknown>,
     include: { supplier: { select: { name: true } } },
     orderBy: { name: "asc" },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   })
 
   const categories = await prisma.inventoryItem.findMany({
@@ -37,7 +51,13 @@ export default async function InventoryPage({ params, searchParams }: Props) {
     orderBy: { category: "asc" },
   })
 
-  const lowStock = items.filter((i) => i.quantity <= i.minQuantity)
+  const allItems = await prisma.inventoryItem.findMany({
+    where: { tenantId: tenant.id },
+    select: { id: true, name: true, quantity: true, minQuantity: true },
+  })
+  const lowStock = allItems.filter((i) => i.quantity <= i.minQuantity)
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   return (
     <div>
@@ -73,7 +93,11 @@ export default async function InventoryPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      <InventoryFilters q={q} category={category} categories={categories} basePath={`/workspace/${tenantSlug}/estoque`} />
+      <div className="mb-6">
+        <SearchInput placeholder="Buscar por nome ou SKU..." basePath={`/workspace/${tenantSlug}/estoque`} defaultValue={q} />
+      </div>
+
+      <InventoryFilters category={category} categories={categories} basePath={`/workspace/${tenantSlug}/estoque`} />
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 py-16 dark:border-zinc-700">
@@ -88,44 +112,47 @@ export default async function InventoryPage({ params, searchParams }: Props) {
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Item</th>
-                <th className="px-4 py-3 font-medium">SKU</th>
-                <th className="px-4 py-3 font-medium">Categoria</th>
-                <th className="px-4 py-3 font-medium text-right">Qtd</th>
-                <th className="px-4 py-3 font-medium text-right">Venda</th>
-                <th className="px-4 py-3 font-medium text-right">Custo</th>
-                <th className="px-4 py-3 font-medium">Fornecedor</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {items.map((i) => {
-                const isLow = i.quantity <= i.minQuantity
-                return (
-                  <tr key={i.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                    <td className="px-4 py-3">
-                      <Link href={`/workspace/${tenantSlug}/estoque/${i.id}`} className="font-medium hover:text-primary">
-                        {i.name}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 font-mono text-xs text-zinc-400">{i.sku || "—"}</td>
-                    <td className="px-4 py-3 text-xs">{i.category || "—"}</td>
-                    <td className={`px-4 py-3 text-right font-medium tabular-nums ${isLow ? "text-red-600" : ""}`}>
-                      {i.quantity}
-                      {isLow && <AlertTriangle className="ml-1 inline size-3 text-red-500" />}
-                    </td>
-                    <td className="px-4 py-3 text-right tabular-nums">{Number(i.unitPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                    <td className="px-4 py-3 text-right tabular-nums text-zinc-500">{Number(i.costPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{i.supplier?.name || "—"}</td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="overflow-hidden rounded-lg border">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Item</th>
+                  <th className="px-4 py-3 font-medium">SKU</th>
+                  <th className="px-4 py-3 font-medium">Categoria</th>
+                  <th className="px-4 py-3 font-medium text-right">Qtd</th>
+                  <th className="px-4 py-3 font-medium text-right">Venda</th>
+                  <th className="px-4 py-3 font-medium text-right">Custo</th>
+                  <th className="px-4 py-3 font-medium">Fornecedor</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {items.map((i) => {
+                  const isLow = i.quantity <= i.minQuantity
+                  return (
+                    <tr key={i.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                      <td className="px-4 py-3">
+                        <Link href={`/workspace/${tenantSlug}/estoque/${i.id}`} className="font-medium hover:text-primary">
+                          {i.name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs text-zinc-400">{i.sku || "—"}</td>
+                      <td className="px-4 py-3 text-xs">{i.category || "—"}</td>
+                      <td className={`px-4 py-3 text-right font-medium tabular-nums ${isLow ? "text-red-600" : ""}`}>
+                        {i.quantity}
+                        {isLow && <AlertTriangle className="ml-1 inline size-3 text-red-500" />}
+                      </td>
+                      <td className="px-4 py-3 text-right tabular-nums">{Number(i.unitPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                      <td className="px-4 py-3 text-right tabular-nums text-zinc-500">{Number(i.costPrice).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{i.supplier?.name || "—"}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Pagination currentPage={page} totalPages={totalPages} basePath={`/workspace/${tenantSlug}/estoque`} searchParams={{ q, category }} />
+        </>
       )}
     </div>
   )

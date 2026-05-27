@@ -3,10 +3,17 @@ import { prisma } from "@/lib/db/prisma"
 import Link from "next/link"
 import { Plus, ArrowUpRight, ArrowDownRight, AlertTriangle, DollarSign, CheckCircle, XCircle, Clock } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Pagination } from "@/components/shared/pagination"
+import type { Metadata } from "next"
 
 interface Props {
   params: Promise<{ tenantSlug: string }>
-  searchParams: Promise<{ type?: string; status?: string }>
+  searchParams: Promise<{ type?: string; status?: string; page?: string }>
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { tenantSlug } = await params
+  return { title: `Financeiro - ${tenantSlug}` }
 }
 
 const statusLabels: Record<string, string> = {
@@ -29,7 +36,9 @@ const statusIcons: Record<string, typeof Clock> = {
 
 export default async function FinanceiroPage({ params, searchParams }: Props) {
   const { tenantSlug } = await params
-  const { type: tabType, status } = await searchParams
+  const { type: tabType, status, page: rawPage } = await searchParams
+  const page = Math.max(1, Number(rawPage) || 1)
+  const PAGE_SIZE = 20
   const tenant = await getTenantContext(tenantSlug)
 
   const activeTab = tabType === "payable" ? "payable" : "receivable"
@@ -37,10 +46,16 @@ export default async function FinanceiroPage({ params, searchParams }: Props) {
   const where: Record<string, unknown> = { tenantId: tenant.id, type: activeTab }
   if (status && ["pending", "paid", "cancelled"].includes(status)) where.status = status
 
+  const total = await prisma.financialRecord.count({ where: where as Record<string, unknown> })
+
   const records = await prisma.financialRecord.findMany({
     where: where as Record<string, unknown>,
     orderBy: { dueDate: "asc" },
+    skip: (page - 1) * PAGE_SIZE,
+    take: PAGE_SIZE,
   })
+
+  const totalPages = Math.ceil(total / PAGE_SIZE)
 
   const [receivableAgg, payableAgg, overdue] = await Promise.all([
     prisma.financialRecord.aggregate({
@@ -176,54 +191,57 @@ export default async function FinanceiroPage({ params, searchParams }: Props) {
           </Button>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead className="bg-zinc-50 dark:bg-zinc-800/50">
-              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Descrição</th>
-                <th className="px-4 py-3 font-medium">Valor</th>
-                <th className="px-4 py-3 font-medium">Vencimento</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Categoria</th>
-                <th className="px-4 py-3 font-medium"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {records.map((r) => {
-                const StatusIcon = statusIcons[r.status]
-                const isOverdue = r.status === "pending" && new Date(r.dueDate) < new Date()
-                return (
-                  <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
-                    <td className="px-4 py-3">
-                      <Link href={`/workspace/${tenantSlug}/financeiro/${r.id}`} className="font-medium hover:text-primary">
-                        {r.description}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-3 font-medium tabular-nums">
-                      {Number(r.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
-                    </td>
-                    <td className={`px-4 py-3 tabular-nums ${isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
-                      {new Date(r.dueDate).toLocaleDateString("pt-BR")}
-                      {isOverdue && <AlertTriangle className="ml-1 inline size-3 text-red-500" />}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[r.status]}`}>
-                        <StatusIcon className="size-3" />
-                        {statusLabels[r.status]}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">{r.category || "—"}</td>
-                    <td className="px-4 py-3 text-right">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`/workspace/${tenantSlug}/financeiro/${r.id}/editar`}>Editar</Link>
-                      </Button>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <div className="overflow-hidden rounded-lg border">
+            <table className="w-full text-sm">
+              <thead className="bg-zinc-50 dark:bg-zinc-800/50">
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3 font-medium">Descrição</th>
+                  <th className="px-4 py-3 font-medium">Valor</th>
+                  <th className="px-4 py-3 font-medium">Vencimento</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium">Categoria</th>
+                  <th className="px-4 py-3 font-medium"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {records.map((r) => {
+                  const StatusIcon = statusIcons[r.status]
+                  const isOverdue = r.status === "pending" && new Date(r.dueDate) < new Date()
+                  return (
+                    <tr key={r.id} className="hover:bg-zinc-50 dark:hover:bg-zinc-800/30">
+                      <td className="px-4 py-3">
+                        <Link href={`/workspace/${tenantSlug}/financeiro/${r.id}`} className="font-medium hover:text-primary">
+                          {r.description}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-3 font-medium tabular-nums">
+                        {Number(r.value).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                      </td>
+                      <td className={`px-4 py-3 tabular-nums ${isOverdue ? "text-red-600 font-medium" : "text-muted-foreground"}`}>
+                        {new Date(r.dueDate).toLocaleDateString("pt-BR")}
+                        {isOverdue && <AlertTriangle className="ml-1 inline size-3 text-red-500" />}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[r.status]}`}>
+                          <StatusIcon className="size-3" />
+                          {statusLabels[r.status]}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-xs text-muted-foreground">{r.category || "—"}</td>
+                      <td className="px-4 py-3 text-right">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/workspace/${tenantSlug}/financeiro/${r.id}/editar`}>Editar</Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+          <Pagination currentPage={page} totalPages={totalPages} basePath={`/workspace/${tenantSlug}/financeiro`} searchParams={{ type: activeTab, status }} />
+        </>
       )}
     </div>
   )

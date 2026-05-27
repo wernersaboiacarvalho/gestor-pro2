@@ -1,4 +1,5 @@
 import { FinancialForm } from "@/components/financeiro/financial-form"
+import { DeleteButton } from "@/components/shared/delete-button"
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
 import { notFound } from "next/navigation"
@@ -13,18 +14,29 @@ export default async function EditFinancialPage({ params }: Props) {
   if (!record) notFound()
 
   return (
-    <FinancialForm
-      tenantSlug={tenantSlug}
-      tenantId={tenant.id}
-      defaultValues={{
-        id: record.id,
-        type: record.type as "receivable" | "payable",
-        description: record.description,
-        value: Number(record.value),
-        status: record.status as "pending" | "paid" | "cancelled",
-        dueDate: record.dueDate.toISOString().split("T")[0],
-        category: record.category ?? undefined,
-      }}
-    />
+    <>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Editando Lançamento</h1>
+        <DeleteButton
+          id={id}
+          endpoint={`/api/financial-records/${id}`}
+          label="o registro financeiro"
+          redirectTo={`/workspace/${tenantSlug}/financeiro`}
+        />
+      </div>
+      <FinancialForm
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        defaultValues={{
+          id: record.id,
+          type: record.type as "receivable" | "payable",
+          description: record.description,
+          value: Number(record.value),
+          status: record.status as "pending" | "paid" | "cancelled",
+          dueDate: record.dueDate.toISOString().split("T")[0],
+          category: record.category ?? undefined,
+        }}
+      />
+    </>
   )
 }

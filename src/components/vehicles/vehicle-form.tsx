@@ -5,9 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { vehicleSchema, type VehicleInput } from "@/lib/validations/schemas"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 interface Props {
   tenantSlug: string
@@ -27,7 +28,6 @@ interface Props {
 export function VehicleForm({ tenantSlug, tenantId, defaultValues }: Props) {
   const router = useRouter()
   const isEditing = !!defaultValues?.id
-  const [deleting, setDeleting] = useState(false)
   const [customers, setCustomers] = useState<{ id: string; name: string }[]>([])
 
   const {
@@ -56,34 +56,31 @@ export function VehicleForm({ tenantSlug, tenantId, defaultValues }: Props) {
   }, [tenantId])
 
   async function onSubmit(data: VehicleInput) {
-    const url = isEditing
-      ? `/api/vehicles/${defaultValues!.id}`
-      : `/api/vehicles?tenantId=${tenantId}`
+    try {
+      const url = isEditing
+        ? `/api/vehicles/${defaultValues!.id}`
+        : `/api/vehicles?tenantId=${tenantId}`
 
-    const method = isEditing ? "PATCH" : "POST"
+      const method = isEditing ? "PATCH" : "POST"
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
 
-    if (!res.ok) {
-      const json = await res.json()
-      setError("root", { message: json.error ?? "Erro ao salvar" })
-      return
+      if (!res.ok) {
+        const json = await res.json()
+        setError("root", { message: json.error ?? "Erro ao salvar" })
+        return
+      }
+
+      toast.success(isEditing ? "Veículo atualizado com sucesso!" : "Veículo criado com sucesso!")
+      router.push(`/workspace/${tenantSlug}/veiculos`)
+      router.refresh()
+    } catch {
+      toast.error("Erro ao salvar veículo")
     }
-
-    router.push(`/workspace/${tenantSlug}/veiculos`)
-    router.refresh()
-  }
-
-  async function handleDelete() {
-    if (!defaultValues?.id || !confirm("Tem certeza que deseja excluir este veículo?")) return
-    setDeleting(true)
-    await fetch(`/api/vehicles/${defaultValues.id}`, { method: "DELETE" })
-    router.push(`/workspace/${tenantSlug}/veiculos`)
-    router.refresh()
   }
 
   return (
@@ -102,12 +99,6 @@ export function VehicleForm({ tenantSlug, tenantId, defaultValues }: Props) {
             </p>
           </div>
         </div>
-        {isEditing && (
-          <Button variant="ghost" className="text-red-600" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="mr-2 size-4" />
-            {deleting ? "Excluindo..." : "Excluir"}
-          </Button>
-        )}
       </div>
 
       {errors.root && (

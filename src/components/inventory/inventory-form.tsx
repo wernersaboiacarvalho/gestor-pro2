@@ -5,9 +5,10 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { inventorySchema, type InventoryInput } from "@/lib/validations/schemas"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Save, Trash2 } from "lucide-react"
+import { ArrowLeft, Save } from "lucide-react"
 import Link from "next/link"
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
+import { toast } from "sonner"
 
 interface Props {
   tenantSlug: string
@@ -35,7 +36,6 @@ const categories = [
 export function InventoryForm({ tenantSlug, tenantId, defaultValues }: Props) {
   const router = useRouter()
   const isEditing = !!defaultValues?.id
-  const [deleting, setDeleting] = useState(false)
   const [suppliers, setSuppliers] = useState<{ id: string; name: string }[]>([])
 
   const {
@@ -66,33 +66,30 @@ export function InventoryForm({ tenantSlug, tenantId, defaultValues }: Props) {
   }, [tenantId])
 
   async function onSubmit(data: InventoryInput) {
-    const url = isEditing
-      ? `/api/inventory/${defaultValues!.id}`
-      : `/api/inventory?tenantId=${tenantId}`
-    const method = isEditing ? "PATCH" : "POST"
+    try {
+      const url = isEditing
+        ? `/api/inventory/${defaultValues!.id}`
+        : `/api/inventory?tenantId=${tenantId}`
+      const method = isEditing ? "PATCH" : "POST"
 
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    })
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      })
 
-    if (!res.ok) {
-      const json = await res.json()
-      setError("root", { message: json.error ?? "Erro ao salvar" })
-      return
+      if (!res.ok) {
+        const json = await res.json()
+        setError("root", { message: json.error ?? "Erro ao salvar" })
+        return
+      }
+
+      toast.success(isEditing ? "Item atualizado com sucesso!" : "Item criado com sucesso!")
+      router.push(`/workspace/${tenantSlug}/estoque`)
+      router.refresh()
+    } catch {
+      toast.error("Erro ao salvar item")
     }
-
-    router.push(`/workspace/${tenantSlug}/estoque`)
-    router.refresh()
-  }
-
-  async function handleDelete() {
-    if (!defaultValues?.id || !confirm("Tem certeza que deseja excluir este item?")) return
-    setDeleting(true)
-    await fetch(`/api/inventory/${defaultValues.id}`, { method: "DELETE" })
-    router.push(`/workspace/${tenantSlug}/estoque`)
-    router.refresh()
   }
 
   return (
@@ -109,12 +106,6 @@ export function InventoryForm({ tenantSlug, tenantId, defaultValues }: Props) {
             <p className="mt-1 text-sm text-muted-foreground">{isEditing ? defaultValues?.name : "Cadastre um novo item no estoque"}</p>
           </div>
         </div>
-        {isEditing && (
-          <Button variant="ghost" className="text-red-600" onClick={handleDelete} disabled={deleting}>
-            <Trash2 className="mr-2 size-4" />
-            {deleting ? "Excluindo..." : "Excluir"}
-          </Button>
-        )}
       </div>
 
       {errors.root && (

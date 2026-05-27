@@ -1,4 +1,5 @@
 import { CustomerForm } from "@/components/customers/customer-form"
+import { DeleteButton } from "@/components/shared/delete-button"
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
 import { notFound } from "next/navigation"
@@ -13,19 +14,30 @@ export default async function EditCustomerPage({ params }: Props) {
   if (!customer) notFound()
 
   return (
-    <CustomerForm
-      tenantSlug={tenantSlug}
-      tenantId={tenant.id}
-      defaultValues={{
-        id: customer.id,
-        name: customer.name,
-        cpf: customer.cpf ?? undefined,
-        cnpj: customer.cnpj ?? undefined,
-        phone: customer.phone,
-        email: customer.email ?? undefined,
-        address: customer.address ?? undefined,
-        notes: customer.notes ?? undefined,
-      }}
-    />
+    <>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Editando Cliente</h1>
+        <DeleteButton
+          id={id}
+          endpoint={`/api/customers/${id}`}
+          label="o cliente"
+          redirectTo={`/workspace/${tenantSlug}/clientes`}
+        />
+      </div>
+      <CustomerForm
+        tenantSlug={tenantSlug}
+        tenantId={tenant.id}
+        defaultValues={{
+          id: customer.id,
+          name: customer.name,
+          cpf: customer.cpf ?? undefined,
+          cnpj: customer.cnpj ?? undefined,
+          phone: customer.phone,
+          email: customer.email ?? undefined,
+          address: customer.address ?? undefined,
+          notes: customer.notes ?? undefined,
+        }}
+      />
+    </>
   )
 }
