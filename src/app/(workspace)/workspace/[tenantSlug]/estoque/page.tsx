@@ -1,8 +1,9 @@
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
 import Link from "next/link"
-import { Plus, Search, Package, AlertTriangle } from "lucide-react"
+import { Plus, Package, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { InventoryFilters } from "./inventory-filters"
 
 interface Props {
   params: Promise<{ tenantSlug: string }>
@@ -72,16 +73,7 @@ export default async function InventoryPage({ params, searchParams }: Props) {
         </div>
       )}
 
-      <div className="mb-6 flex flex-wrap items-center gap-3">
-        <div className="relative max-w-md flex-1">
-          <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-          <input name="q" defaultValue={q} placeholder="Buscar por nome ou SKU..." className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-10 pr-4 text-sm dark:border-zinc-800 dark:bg-zinc-900" />
-        </div>
-        <select name="category" defaultValue={category ?? ""} onChange={(e) => { const url = new URL(window.location.href); if (e.target.value) url.searchParams.set("category", e.target.value); else url.searchParams.delete("category"); window.location.href = url.toString(); }} className="rounded-lg border px-3 py-2 text-sm bg-white dark:bg-zinc-900">
-          <option value="">Todas categorias</option>
-          {categories.map((c) => c.category && <option key={c.category} value={c.category}>{c.category}</option>)}
-        </select>
-      </div>
+      <InventoryFilters q={q} category={category} categories={categories} basePath={`/workspace/${tenantSlug}/estoque`} />
 
       {items.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-zinc-300 py-16 dark:border-zinc-700">
