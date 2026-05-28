@@ -13,6 +13,7 @@ import {
   Truck,
   DollarSign,
   Building2,
+  FileText,
   Settings,
   LogOut,
   Menu,
@@ -25,6 +26,8 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import type { Permission, Role } from "@/lib/permissions"
 import { hasPermission } from "@/lib/permissions"
+import { GlobalSearch } from "@/components/shared/global-search"
+import { Notifications } from "@/components/shared/notifications"
 
 interface TenantInfo {
   name: string
@@ -47,6 +50,7 @@ const navItems = [
   { href: "/estoque", label: "Estoque", icon: Package, permission: "inventory.view" as Permission },
   { href: "/fornecedores", label: "Fornecedores", icon: Truck, permission: "suppliers.view" as Permission },
   { href: "/financeiro", label: "Financeiro", icon: DollarSign, permission: "financial.view" as Permission },
+  { href: "/relatorios", label: "Relatórios", icon: FileText, permission: "reports.view" as Permission },
 ]
 
 const bottomItems = [
@@ -256,6 +260,10 @@ export function WorkspaceShell({ tenant, children }: Props) {
             <p className="truncate text-sm font-semibold">{tenant.name}</p>
           </div>
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          <GlobalSearch baseUrl={`/workspace/${tenant.slug}`} />
+          <Notifications baseUrl={`/workspace/${tenant.slug}`} />
+        </div>
       </div>
 
       {/* Mobile sheet */}
@@ -275,18 +283,19 @@ export function WorkspaceShell({ tenant, children }: Props) {
 
       {/* Main content */}
       <main className="min-w-0">
-        {/* Desktop collapse toggle */}
-        <div className="hidden lg:block">
+        {/* Desktop collapse toggle + search */}
+        <div className="hidden lg:flex lg:items-center lg:justify-between lg:fixed lg:top-3 lg:z-30" style={{ left: `${sidebarWidth * 4 + 0.5}rem`, right: "1rem" }}>
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleCollapse}
-            className="fixed top-3 z-30 border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
-            style={{ left: `${sidebarWidth * 4 + 0.5}rem` }}
+            className="border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
           >
             {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
             <span className="sr-only">{collapsed ? "Expandir menu" : "Recolher menu"}</span>
           </Button>
+          <GlobalSearch baseUrl={`/workspace/${tenant.slug}`} />
+          <Notifications baseUrl={`/workspace/${tenant.slug}`} />
         </div>
         <div className="w-full max-w-none p-4 lg:p-8 lg:pt-14">{children}</div>
       </main>

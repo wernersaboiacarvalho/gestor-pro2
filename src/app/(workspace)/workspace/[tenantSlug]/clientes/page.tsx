@@ -82,7 +82,7 @@ export default async function CustomersPage({ params, searchParams }: Props) {
             {customers.map((c) => (
               <Link
                 key={c.id}
-                href={`/workspace/${tenantSlug}/clientes/${c.id}/editar`}
+                href={`/workspace/${tenantSlug}/clientes/${c.id}`}
                 className="group rounded-lg border border-zinc-200 bg-white p-5 transition-all hover:border-primary/50 hover:shadow-sm dark:border-zinc-800 dark:bg-zinc-900"
               >
                 <h3 className="font-semibold truncate">{c.name}</h3>

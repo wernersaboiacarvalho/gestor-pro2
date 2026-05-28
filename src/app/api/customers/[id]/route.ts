@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma"
 import { customerSchema } from "@/lib/validations/schemas"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/api-auth"
+import { logAudit } from "@/lib/audit"
 
 export async function GET(
   _request: Request,
@@ -37,6 +38,17 @@ export async function PATCH(
   const parsed = customerSchema.partial().safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
   const updated = await prisma.customer.update({ where: { id }, data: parsed.data })
+
+  await logAudit({
+    tenantId: auth.ctx.tenantId,
+    userId: auth.ctx.userId,
+    action: "update",
+    entity: "customer",
+    entityId: id,
+    oldValues: { name: customer.name, cpf: customer.cpf, cnpj: customer.cnpj, phone: customer.phone, email: customer.email },
+    newValues: parsed.data,
+  })
+
   return NextResponse.json(updated)
 }
 
@@ -52,6 +64,15 @@ export async function DELETE(
   if (!customer || (auth.ctx.role !== "super_admin" && customer.tenantId !== auth.ctx.tenantId)) {
     return NextResponse.json({ error: "Cliente não encontrado" }, { status: 404 })
   }
+  await logAudit({
+    tenantId: auth.ctx.tenantId,
+    userId: auth.ctx.userId,
+    action: "delete",
+    entity: "customer",
+    entityId: id,
+    oldValues: { name: customer.name, cpf: customer.cpf, cnpj: customer.cnpj, phone: customer.phone, email: customer.email },
+  })
+
   await prisma.customer.delete({ where: { id } })
   return NextResponse.json({ ok: true })
 }

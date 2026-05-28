@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db/prisma"
 import { financialRecordSchema } from "@/lib/validations/schemas"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth/api-auth"
+import { logAudit } from "@/lib/audit"
 
 export async function GET(
   _request: Request,
@@ -40,6 +41,17 @@ export async function PATCH(
   if (data.status === "paid") data.paidAt = new Date()
 
   const updated = await prisma.financialRecord.update({ where: { id }, data })
+
+  await logAudit({
+    tenantId: auth.ctx.tenantId,
+    userId: auth.ctx.userId,
+    action: "update",
+    entity: "financial_record",
+    entityId: id,
+    oldValues: { description: record.description, value: record.value, type: record.type, status: record.status, dueDate: record.dueDate },
+    newValues: parsed.data,
+  })
+
   return NextResponse.json(updated)
 }
 

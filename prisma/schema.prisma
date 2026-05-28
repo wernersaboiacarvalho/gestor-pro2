@@ -290,3 +290,18 @@ model ServiceOrderHistory {
   @@index([serviceOrderId, createdAt])
   @@index([tenantId])
 }
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  tenantId    String
+  userId      String?
+  action      String   // 'create', 'update', 'delete'
+  entity      String   // 'customer', 'vehicle', 'service_order', 'inventory', 'financial_record'
+  entityId    String
+  oldValues   Json?
+  newValues   Json?
+  createdAt   DateTime @default(now())
+
+  @@index([tenantId, entity, createdAt])
+  @@index([tenantId, userId])
+}

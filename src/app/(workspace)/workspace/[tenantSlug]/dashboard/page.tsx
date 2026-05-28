@@ -1,7 +1,8 @@
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
 import Link from "next/link"
-import { ClipboardList, Wrench, CheckCircle, DollarSign, AlertTriangle, ArrowRight, Clock, Calendar } from "lucide-react"
+import { Wrench, CheckCircle, DollarSign, AlertTriangle, ArrowRight, Clock, Calendar, TrendingUp, Users } from "lucide-react"
+import { DashboardCharts } from "@/components/dashboard/charts"
 
 interface Props { params: Promise<{ tenantSlug: string }> }
 
@@ -22,7 +23,11 @@ export default async function TenantDashboardPage({ params }: Props) {
     upcomingBills,
     lowStockItems,
     totalCustomers,
-    totalVehicles,
+    overdueCount,
+    newCustomersThisMonth,
+    ordersByStatus,
+    monthlyRevenueHistory,
+    ticketAvg,
   ] = await Promise.all([
     prisma.serviceOrder.count({ where: { tenantId, status: "pending" } }),
     prisma.serviceOrder.count({ where: { tenantId, status: "in_progress" } }),
@@ -48,17 +53,62 @@ export default async function TenantDashboardPage({ params }: Props) {
       take: 50,
     }).then(items => items.filter(i => i.quantity <= i.minQuantity).slice(0, 5)),
     prisma.customer.count({ where: { tenantId } }),
-    prisma.vehicle.count({ where: { tenantId } }),
+    prisma.financialRecord.count({
+      where: { tenantId, status: "pending", dueDate: { lt: now } },
+    }),
+    prisma.customer.count({
+      where: { tenantId, createdAt: { gte: startOfMonth } },
+    }),
+    prisma.serviceOrder.groupBy({
+      by: ["status"],
+      where: { tenantId, type: "service_order" },
+      _count: { status: true },
+    }),
+    (async () => {
+      const months: { month: string; revenue: number }[] = []
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1)
+        const agg = await prisma.serviceOrder.aggregate({
+          where: {
+            tenantId,
+            status: { in: ["completed", "delivered"] },
+            completedAt: { gte: d, lt: nextMonth },
+          },
+          _sum: { totalValue: true },
+        })
+        months.push({
+          month: d.toLocaleDateString("pt-BR", { month: "short" }),
+          revenue: Number(agg._sum.totalValue ?? 0),
+        })
+      }
+      return months
+    })(),
+    (async () => {
+      const completedOrders = await prisma.serviceOrder.aggregate({
+        where: { tenantId, status: { in: ["completed", "delivered"] }, completedAt: { gte: startOfMonth } },
+        _sum: { totalValue: true },
+        _count: { id: true },
+      })
+      const count = completedOrders._count.id
+      const total = Number(completedOrders._sum.totalValue ?? 0)
+      return count > 0 ? total / count : 0
+    })(),
   ])
 
   const revenue = Number(monthlyRevenue._sum.totalValue ?? 0)
+
+  const ordersByStatusData = ordersByStatus.map((s) => ({
+    status: s.status,
+    count: s._count.status,
+  }))
 
   return (
     <div>
       <h1 className="mb-8 text-2xl font-bold tracking-tight">Dashboard</h1>
 
       {/* Summary Cards */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <div className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
           <div className="flex items-center gap-2 text-sm text-amber-600">
             <Clock className="size-4" />
@@ -88,13 +138,38 @@ export default async function TenantDashboardPage({ params }: Props) {
           <p className="mt-2 text-3xl font-bold tabular-nums">{revenue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
         </div>
         <div className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
+          <div className="flex items-center gap-2 text-sm text-violet-600">
+            <TrendingUp className="size-4" />
+            <span className="font-medium">Ticket Médio</span>
+          </div>
+          <p className="mt-2 text-3xl font-bold tabular-nums">{ticketAvg.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</p>
+        </div>
+        <div className="rounded-lg border bg-white p-5 dark:bg-zinc-900">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <ClipboardList className="size-4" />
+            <Users className="size-4" />
             <span className="font-medium">Clientes</span>
           </div>
           <p className="mt-2 text-3xl font-bold">{totalCustomers}</p>
-          <p className="text-xs text-muted-foreground">{totalVehicles} veículos</p>
+          <p className="text-xs text-muted-foreground">+{newCustomersThisMonth} novos no mês</p>
         </div>
+      </div>
+
+      {/* Overdue Alert */}
+      {overdueCount > 0 && (
+        <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950">
+          <div className="flex items-center gap-2 text-red-800 dark:text-red-300">
+            <AlertTriangle className="size-4" />
+            <span className="text-sm font-medium">{overdueCount} conta(s) vencida(s)</span>
+          </div>
+        </div>
+      )}
+
+      {/* Charts */}
+      <div className="mb-8">
+        <DashboardCharts
+          monthlyRevenue={monthlyRevenueHistory}
+          ordersByStatus={ordersByStatusData}
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
