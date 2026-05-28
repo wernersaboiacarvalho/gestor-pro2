@@ -24,5 +24,5 @@ export default async function Home() {
     }
   }
 
-  redirect("/login")
+  redirect("/api/auth/signout?callbackUrl=/login")
 }
