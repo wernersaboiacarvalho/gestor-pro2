@@ -13,6 +13,9 @@ import {
   Truck,
   XCircle,
   Pencil,
+  RotateCcw,
+  Clock,
+  History,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -27,6 +30,30 @@ const statusConfig: Record<string, { label: string; className: string }> = {
   completed: { label: "Concluída", className: "bg-violet-100 text-violet-700 dark:bg-violet-950" },
   delivered: { label: "Entregue", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950" },
   cancelled: { label: "Cancelada", className: "bg-red-100 text-red-700 dark:bg-red-950" },
+}
+
+const actionLabels: Record<string, string> = {
+  send: "Enviado ao cliente",
+  approve: "Aprovado",
+  reject: "Rejeitado",
+  convert: "Convertido para OS",
+  start: "Iniciado",
+  complete: "Concluído",
+  deliver: "Entregue",
+  cancel: "Cancelado",
+  reopen: "Reaberto",
+}
+
+const actionIcons: Record<string, typeof Clock> = {
+  send: Send,
+  approve: CheckCircle2,
+  reject: XCircle,
+  convert: Play,
+  start: Play,
+  complete: CheckCircle2,
+  deliver: Truck,
+  cancel: XCircle,
+  reopen: RotateCcw,
 }
 
 function formatCurrency(value: number) {
@@ -50,6 +77,15 @@ interface OrderItem {
   partnerName: string | null
 }
 
+interface HistoryEntry {
+  id: string
+  action: string
+  fromStatus: string | null
+  toStatus: string
+  notes: string | null
+  createdAt: string
+}
+
 interface OrderData {
   id: string
   orderNumber: string
@@ -67,18 +103,23 @@ interface OrderData {
   vehicle: { plate: string; brand: string; model: string; year: number; color: string | null }
   mechanic: { id: string; name: string } | null
   items: OrderItem[]
+  history: HistoryEntry[]
 }
 
 export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; tenantSlug: string }) {
   const router = useRouter()
   const [acting, setActing] = useState(false)
+  const [confirmDeliver, setConfirmDeliver] = useState(false)
   const st = statusConfig[order.status] ?? { label: order.status, className: "" }
 
   async function handleAction(action: string) {
     setActing(true)
-    await fetch(`/api/service-orders/${order.id}/${action}`, { method: "PATCH" })
-    router.refresh()
+    const res = await fetch(`/api/service-orders/${order.id}/${action}`, { method: "PATCH" })
+    if (res.ok) {
+      router.refresh()
+    }
     setActing(false)
+    setConfirmDeliver(false)
   }
 
   const totalItems = order.items?.reduce((sum, i) => sum + i.quantity * i.unitValue, 0) ?? 0
@@ -145,13 +186,52 @@ export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; te
             </Button>
           )}
           {order.type === "service_order" && order.status === "completed" && (
-            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAction("deliver")} disabled={acting}>
+            <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setConfirmDeliver(true)} disabled={acting}>
               <Truck className="mr-1.5 size-3.5" />
               Entregar
             </Button>
           )}
+          {order.type === "service_order" && order.status === "cancelled" && (
+            <Button size="sm" variant="outline" onClick={() => handleAction("reopen")} disabled={acting}>
+              <RotateCcw className="mr-1.5 size-3.5" />
+              Reabrir
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Delivery Confirmation Modal */}
+      {confirmDeliver && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-lg dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold">Confirmar entrega</h3>
+            <p className="mt-2 text-sm text-zinc-500">
+              Ao confirmar a entrega, será gerado automaticamente:
+            </p>
+            <ul className="mt-3 space-y-1 text-sm text-zinc-600 dark:text-zinc-400">
+              <li className="flex items-center gap-2">
+                <CheckCircle2 className="size-4 text-green-600" />
+                Conta a receber no valor de {formatCurrency(final)}
+              </li>
+              {order.items.some((i) => i.partnerCost) && (
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="size-4 text-green-600" />
+                  Conta(s) a pagar para terceirizados
+                </li>
+              )}
+            </ul>
+            <div className="mt-6 flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setConfirmDeliver(false)} disabled={acting}>
+                Cancelar
+              </Button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700" onClick={() => handleAction("deliver")} disabled={acting}>
+                <Truck className="mr-1.5 size-3.5" />
+                {acting ? "Confirmando..." : "Confirmar entrega"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Info Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -278,6 +358,48 @@ export function ServiceOrderDetail({ order, tenantSlug }: { order: OrderData; te
               <span className="tabular-nums text-emerald-600 dark:text-emerald-400">
                 {formatCurrency(final - order.items.reduce((s, i) => s + (i.partnerCost ?? 0) * (i.partnerId ? i.quantity : 0), 0))}
               </span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* History Timeline */}
+      {order.history.length > 0 && (
+        <div className="rounded-lg border bg-white dark:bg-zinc-900">
+          <div className="flex items-center gap-2 border-b px-5 py-4">
+            <History className="size-4" />
+            <h2 className="font-semibold">Histórico</h2>
+          </div>
+          <div className="px-5 py-4">
+            <div className="relative space-y-4">
+              <div className="absolute left-[15px] top-2 bottom-2 w-px bg-zinc-200 dark:bg-zinc-700" />
+              {order.history.map((entry) => {
+                const Icon = actionIcons[entry.action] ?? Clock
+                const fromLabel = entry.fromStatus ? (statusConfig[entry.fromStatus]?.label ?? entry.fromStatus) : null
+                const toLabel = statusConfig[entry.toStatus]?.label ?? entry.toStatus
+                return (
+                  <div key={entry.id} className="relative flex gap-3">
+                    <div className="relative z-10 flex size-[30px] shrink-0 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                      <Icon className="size-3.5 text-zinc-500" />
+                    </div>
+                    <div className="min-w-0 flex-1 pt-1">
+                      <p className="text-sm">
+                        <span className="font-medium">{actionLabels[entry.action] ?? entry.action}</span>
+                        {fromLabel && (
+                          <span className="text-muted-foreground"> — {fromLabel} → {toLabel}</span>
+                        )}
+                        {!fromLabel && (
+                          <span className="text-muted-foreground"> → {toLabel}</span>
+                        )}
+                      </p>
+                      {entry.notes && (
+                        <p className="mt-0.5 text-xs text-muted-foreground">{entry.notes}</p>
+                      )}
+                      <p className="mt-0.5 text-xs text-muted-foreground">{formatDate(entry.createdAt)}</p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
           </div>
         </div>

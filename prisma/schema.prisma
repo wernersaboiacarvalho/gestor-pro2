@@ -119,7 +119,8 @@ model ServiceOrder {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  items ServiceOrderItem[]
+  items    ServiceOrderItem[]
+  history  ServiceOrderHistory[]
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId, type, status, createdAt])
@@ -272,4 +273,20 @@ model FinancialRecord {
   @@index([tenantId, type, status])
   @@index([tenantId, dueDate])
   @@index([tenantId, createdAt])
+}
+
+model ServiceOrderHistory {
+  id              String       @id @default(cuid())
+  tenantId        String
+  serviceOrderId  String
+  serviceOrder    ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  userId          String?
+  action          String       // 'send', 'approve', 'reject', 'convert', 'start', 'complete', 'deliver', 'cancel', 'reopen'
+  fromStatus      String?
+  toStatus        String?
+  notes           String?
+  createdAt       DateTime     @default(now())
+
+  @@index([serviceOrderId, createdAt])
+  @@index([tenantId])
 }

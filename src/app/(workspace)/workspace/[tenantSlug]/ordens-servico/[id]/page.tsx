@@ -20,6 +20,10 @@ export default async function ServiceOrderDetailPage({ params }: Props) {
       vehicle: { select: { plate: true, brand: true, model: true, year: true, color: true } },
       mechanic: { select: { id: true, name: true } },
       items: { include: { partner: { select: { name: true } } } },
+      history: {
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      },
     },
   })
 
@@ -47,6 +51,14 @@ export default async function ServiceOrderDetailPage({ params }: Props) {
       partnerId: item.partnerId,
       partnerCost: item.partnerCost ? Number(item.partnerCost) : null,
       partnerName: item.partner?.name ?? null,
+    })),
+    history: order.history.map((h) => ({
+      id: h.id,
+      action: h.action,
+      fromStatus: h.fromStatus,
+      toStatus: h.toStatus ?? "",
+      notes: h.notes,
+      createdAt: h.createdAt.toISOString(),
     })),
   }
 
