@@ -13,12 +13,17 @@ vi.mock("next/navigation", () => ({
   useRouter: vi.fn(),
 }))
 
+interface MockRouter {
+  push: ReturnType<typeof vi.fn>
+  refresh: ReturnType<typeof vi.fn>
+}
+
 describe("LoginForm", () => {
-  const mockRouter = { push: vi.fn(), refresh: vi.fn() }
+  const mockRouter: MockRouter = { push: vi.fn(), refresh: vi.fn() }
 
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.mocked(useRouter).mockReturnValue(mockRouter as any)
+    vi.mocked(useRouter).mockReturnValue(mockRouter as unknown as ReturnType<typeof useRouter>)
   })
 
   it("renders form fields", () => {
@@ -55,7 +60,7 @@ describe("LoginForm", () => {
   })
 
   it("calls signIn on valid submit", async () => {
-    vi.mocked(signIn).mockResolvedValue({ ok: true, error: undefined } as any)
+    vi.mocked(signIn).mockResolvedValue({ ok: true, error: undefined } as Awaited<ReturnType<typeof signIn>>)
 
     const user = userEvent.setup()
     render(<LoginForm />)
@@ -77,7 +82,7 @@ describe("LoginForm", () => {
   })
 
   it("displays root error on failed signIn", async () => {
-    vi.mocked(signIn).mockResolvedValue({ ok: false, error: "Invalid credentials" } as any)
+    vi.mocked(signIn).mockResolvedValue({ ok: false, error: "Invalid credentials" } as Awaited<ReturnType<typeof signIn>>)
 
     const user = userEvent.setup()
     render(<LoginForm />)

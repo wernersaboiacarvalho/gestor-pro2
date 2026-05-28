@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db/prisma"
+import { requireRole } from "@/lib/auth/api-auth"
 import { NextResponse } from "next/server"
 
 export async function GET() {
+  const auth = await requireRole("super_admin")
+  if (!auth.ok) return auth.response
   const [totalTenants, activeTenants, totalUsers, totalOrders, totalRevenue] = await Promise.all([
     prisma.tenant.count(),
     prisma.tenant.count({ where: { status: "active" } }),

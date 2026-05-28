@@ -1,14 +1,18 @@
 import { prisma } from "@/lib/db/prisma"
 import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth/api-auth"
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string; action: string }> }
 ) {
+  const auth = await requireAuth()
+  if (!auth.ok) return auth.response
+
   const { id, action } = await params
 
   const order = await prisma.serviceOrder.findUnique({ where: { id } })
-  if (!order) {
+  if (!order || (auth.ctx.role !== "super_admin" && order.tenantId !== auth.ctx.tenantId)) {
     return NextResponse.json({ error: "Ordem não encontrada" }, { status: 404 })
   }
 

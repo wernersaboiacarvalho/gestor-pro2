@@ -18,7 +18,6 @@ export default async function EditFinancialPage({ params }: Props) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Editando Lançamento</h1>
         <DeleteButton
-          id={id}
           endpoint={`/api/financial-records/${id}`}
           label="o registro financeiro"
           redirectTo={`/workspace/${tenantSlug}/financeiro`}

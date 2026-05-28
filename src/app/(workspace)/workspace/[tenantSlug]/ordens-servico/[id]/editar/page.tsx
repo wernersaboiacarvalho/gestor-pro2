@@ -24,7 +24,6 @@ export default async function EditBudgetPage({ params }: Props) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Editando Orçamento</h1>
         <DeleteButton
-          id={id}
           endpoint={`/api/service-orders/${id}`}
           label="o orçamento"
           redirectTo={`/workspace/${tenantSlug}/ordens-servico`}

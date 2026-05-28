@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma"
 import { serviceOrderSchema } from "@/lib/validations/schemas"
+import { requireTenantAccess } from "@/lib/auth/api-auth"
 import type { Prisma } from "@/generated/prisma"
 import { NextResponse } from "next/server"
 
@@ -12,6 +13,9 @@ export async function GET(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: "tenantId é obrigatório" }, { status: 400 })
   }
+
+  const auth = await requireTenantAccess(tenantId)
+  if (!auth.ok) return auth.response
 
   const where: Prisma.ServiceOrderWhereInput = { tenantId }
   if (type) where.type = type as "budget" | "service_order"
@@ -37,6 +41,9 @@ export async function POST(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: "tenantId é obrigatório" }, { status: 400 })
   }
+
+  const auth = await requireTenantAccess(tenantId)
+  if (!auth.ok) return auth.response
 
   const body = await request.json()
   const parsed = serviceOrderSchema.safeParse(body)

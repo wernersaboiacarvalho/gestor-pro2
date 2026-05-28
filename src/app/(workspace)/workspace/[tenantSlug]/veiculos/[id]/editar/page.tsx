@@ -18,7 +18,6 @@ export default async function EditVehiclePage({ params }: Props) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Editando Veículo</h1>
         <DeleteButton
-          id={id}
           endpoint={`/api/vehicles/${id}`}
           label="o veículo"
           redirectTo={`/workspace/${tenantSlug}/veiculos`}

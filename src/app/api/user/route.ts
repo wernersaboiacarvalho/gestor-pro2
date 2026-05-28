@@ -1,4 +1,4 @@
-import { auth } from "@/lib/auth/auth"
+import { requireAuth } from "@/lib/auth/api-auth"
 import { prisma } from "@/lib/db/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
@@ -11,11 +11,11 @@ const profileSchema = z.object({
 })
 
 export async function GET() {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  const authResult = await requireAuth()
+  if (!authResult.ok) return authResult.response
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: authResult.ctx.userId },
     select: { id: true, name: true, email: true, role: true, tenantId: true },
   })
   if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
@@ -24,8 +24,8 @@ export async function GET() {
 }
 
 export async function PATCH(request: Request) {
-  const session = await auth()
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autenticado" }, { status: 401 })
+  const authResult = await requireAuth()
+  if (!authResult.ok) return authResult.response
 
   const body = await request.json()
   const parsed = profileSchema.safeParse(body)
@@ -36,7 +36,7 @@ export async function PATCH(request: Request) {
   if (parsed.data.name) data.name = parsed.data.name
 
   if (parsed.data.newPassword) {
-    const user = await prisma.user.findUnique({ where: { id: session.user.id } })
+    const user = await prisma.user.findUnique({ where: { id: authResult.ctx.userId } })
     if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
 
     const isValid = await bcrypt.compare(parsed.data.currentPassword ?? "", user.password)
@@ -46,7 +46,7 @@ export async function PATCH(request: Request) {
   }
 
   const user = await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: authResult.ctx.userId },
     data,
     select: { id: true, name: true, email: true },
   })

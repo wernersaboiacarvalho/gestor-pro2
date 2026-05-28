@@ -18,7 +18,6 @@ export default async function EditInventoryPage({ params }: Props) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Editando Item</h1>
         <DeleteButton
-          id={id}
           endpoint={`/api/inventory/${id}`}
           label="o item"
           redirectTo={`/workspace/${tenantSlug}/estoque`}

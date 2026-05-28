@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 
 interface Props {
-  id: string
   endpoint: string
   label: string
   redirectTo: string
 }
 
-export function DeleteButton({ id, endpoint, label, redirectTo }: Props) {
+export function DeleteButton({ endpoint, label, redirectTo }: Props) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()

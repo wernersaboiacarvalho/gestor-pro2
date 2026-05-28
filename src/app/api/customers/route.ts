@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma"
 import { customerSchema } from "@/lib/validations/schemas"
+import { requireTenantAccess } from "@/lib/auth/api-auth"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -10,6 +11,9 @@ export async function GET(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: "tenantId é obrigatório" }, { status: 400 })
   }
+
+  const auth = await requireTenantAccess(tenantId)
+  if (!auth.ok) return auth.response
 
   const where: Record<string, unknown> = { tenantId }
   if (q) {
@@ -36,6 +40,9 @@ export async function POST(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: "tenantId é obrigatório" }, { status: 400 })
   }
+
+  const auth = await requireTenantAccess(tenantId)
+  if (!auth.ok) return auth.response
 
   const body = await request.json()
   const parsed = customerSchema.safeParse(body)

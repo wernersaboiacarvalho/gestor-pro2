@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/db/prisma"
 import { NextResponse } from "next/server"
+import { requireAuth } from "@/lib/auth/api-auth"
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth()
+  if (!auth.ok) return auth.response
+
   const { id } = await params
   const order = await prisma.serviceOrder.findUnique({
     where: { id },
@@ -15,7 +19,7 @@ export async function GET(
     },
   })
 
-  if (!order) {
+  if (!order || (auth.ctx.role !== "super_admin" && order.tenantId !== auth.ctx.tenantId)) {
     return NextResponse.json({ error: "Ordem não encontrada" }, { status: 404 })
   }
 
@@ -26,11 +30,18 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth()
+  if (!auth.ok) return auth.response
+
   const { id } = await params
+  const order = await prisma.serviceOrder.findUnique({ where: { id } })
+  if (!order || (auth.ctx.role !== "super_admin" && order.tenantId !== auth.ctx.tenantId)) {
+    return NextResponse.json({ error: "Ordem não encontrada" }, { status: 404 })
+  }
   const body = await request.json()
   const { items, ...data } = body
 
-  const order = await prisma.serviceOrder.update({
+  const updated = await prisma.serviceOrder.update({
     where: { id },
     data: {
       ...data,
@@ -57,17 +68,20 @@ export async function PATCH(
     },
   })
 
-  return NextResponse.json(order)
+  return NextResponse.json(updated)
 }
 
 export async function DELETE(
   _request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireAuth()
+  if (!auth.ok) return auth.response
+
   const { id } = await params
 
   const order = await prisma.serviceOrder.findUnique({ where: { id } })
-  if (!order) {
+  if (!order || (auth.ctx.role !== "super_admin" && order.tenantId !== auth.ctx.tenantId)) {
     return NextResponse.json({ error: "Ordem não encontrada" }, { status: 404 })
   }
 

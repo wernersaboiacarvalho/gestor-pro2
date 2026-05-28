@@ -190,7 +190,6 @@ function generateCnpj(): string {
 }
 
 function generatePlate(index: number): string {
-  const letters = String.fromCharCode(65 + (index % 26))
   return `ABC${String(index).padStart(4, "0")}`
 }
 
@@ -416,7 +415,16 @@ async function main() {
         const itemTotal = unitValue * quantity
         totalValue += itemTotal
 
-        const itemData: any = {
+        const itemData: {
+          type: string
+          description: string
+          quantity: number
+          unitValue: number
+          totalValue: number
+          partnerId?: string
+          partnerCost?: number
+          inventoryItemId?: string
+        } = {
           type: isService ? "service" : "part",
           description: isService ? pick(serviceDescriptions) : pick(partNames),
           quantity,
@@ -468,9 +476,9 @@ async function main() {
             quantity: item.quantity,
             unitValue: item.unitValue,
             totalValue: item.totalValue,
-            partnerId: (item as any).partnerId,
-            partnerCost: (item as any).partnerCost,
-            inventoryItemId: (item as any).inventoryItemId,
+            partnerId: item.partnerId,
+            partnerCost: item.partnerCost,
+            inventoryItemId: item.inventoryItemId,
           },
         })
         totals.orderItems++

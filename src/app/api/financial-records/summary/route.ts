@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma"
+import { requireTenantAccess } from "@/lib/auth/api-auth"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -8,6 +9,9 @@ export async function GET(request: Request) {
   if (!tenantId) {
     return NextResponse.json({ error: "tenantId é obrigatório" }, { status: 400 })
   }
+
+  const auth = await requireTenantAccess(tenantId)
+  if (!auth.ok) return auth.response
 
   const [receivable, payable, overdue] = await Promise.all([
     prisma.financialRecord.aggregate({

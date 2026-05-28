@@ -1,10 +1,14 @@
 import { prisma } from "@/lib/db/prisma"
+import { requireRole } from "@/lib/auth/api-auth"
 import { NextResponse } from "next/server"
 
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const auth = await requireRole("super_admin")
+  if (!auth.ok) return auth.response
+
   const { id } = await params
   const body = await request.json()
   const { status } = body

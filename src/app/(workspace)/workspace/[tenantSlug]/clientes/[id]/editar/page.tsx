@@ -18,7 +18,6 @@ export default async function EditCustomerPage({ params }: Props) {
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold">Editando Cliente</h1>
         <DeleteButton
-          id={id}
           endpoint={`/api/customers/${id}`}
           label="o cliente"
           redirectTo={`/workspace/${tenantSlug}/clientes`}
