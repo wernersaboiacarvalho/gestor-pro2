@@ -69,7 +69,7 @@ describe("customerSchema", () => {
   })
 
   it("accepts full data", () => {
-    const data = { ...base, cpf: "12345678901", cnpj: "", email: "c@t.com", address: "Rua X", notes: "obs" }
+    const data = { ...base, cpf: "529.982.247-25", cnpj: "", email: "c@t.com", address: "Rua X", notes: "obs" }
     expect(customerSchema.parse(data)).toMatchObject(data)
   })
 

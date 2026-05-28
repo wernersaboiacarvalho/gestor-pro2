@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db/prisma"
 import { serviceOrderSchema } from "@/lib/validations/schemas"
 import { requireTenantAccess } from "@/lib/auth/api-auth"
-import type { Prisma } from "@/generated/prisma"
+import type { Prisma, ServiceOrderStatus, ServiceOrderType } from "@/generated/prisma"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request) {
@@ -18,8 +18,8 @@ export async function GET(request: Request) {
   if (!auth.ok) return auth.response
 
   const where: Prisma.ServiceOrderWhereInput = { tenantId }
-  if (type) where.type = type as "budget" | "service_order"
-  if (status) where.status = status as string
+  if (type) where.type = type as ServiceOrderType
+  if (status) where.status = status as ServiceOrderStatus
 
   const orders = await prisma.serviceOrder.findMany({
     where,

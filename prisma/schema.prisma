@@ -7,15 +7,78 @@ datasource db {
   provider = "postgresql"
 }
 
+enum UserRole {
+  super_admin
+  admin
+  user
+}
+
+enum BusinessType {
+  workshop
+  salon
+  gym
+}
+
+enum TenantPlan {
+  free
+  basic
+  premium
+}
+
+enum TenantStatus {
+  active
+  suspended
+  cancelled
+}
+
+enum ServiceOrderType {
+  budget
+  service_order
+}
+
+enum ServiceOrderStatus {
+  draft
+  sent
+  approved
+  rejected
+  pending
+  in_progress
+  completed
+  delivered
+  cancelled
+}
+
+enum ServiceOrderItemType {
+  service
+  part
+}
+
+enum FinancialType {
+  receivable
+  payable
+}
+
+enum FinancialStatus {
+  pending
+  paid
+  cancelled
+}
+
+enum AuditAction {
+  create
+  update
+  delete
+}
+
 model Tenant {
-  id           String         @id @default(cuid())
+  id           String       @id @default(cuid())
   name         String
-  slug         String         @unique
-  businessType String         // 'workshop', 'salon', 'gym'
-  plan         String         @default("free")
-  status       String         @default("active")
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+  slug         String       @unique
+  businessType BusinessType
+  plan         TenantPlan   @default(free)
+  status       TenantStatus @default(active)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 
   users          User[]
   customers      Customer[]
@@ -37,7 +100,7 @@ model User {
   password      String
   name          String
   image         String?
-  role          String   // 'super_admin', 'admin', 'user'
+  role          UserRole
   tenantId      String?
   tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdAt     DateTime @default(now())
@@ -97,30 +160,31 @@ model Vehicle {
 }
 
 model ServiceOrder {
-  id          String         @id @default(cuid())
+  id          String             @id @default(cuid())
   tenantId    String
-  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vehicleId   String
-  vehicle     Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  vehicle     Vehicle            @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   mechanicId  String?
-  mechanic    User?          @relation("AssignedMechanic", fields: [mechanicId], references: [id])
+  mechanic    User?              @relation("AssignedMechanic", fields: [mechanicId], references: [id])
 
   orderNumber String
-  type        String         @default("budget")   // "budget" | "service_order"
-  status      String         @default("draft")     // budget: draft, sent, approved, rejected | service_order: pending, in_progress, completed, delivered, cancelled
+  type        ServiceOrderType   @default(budget)
+  status      ServiceOrderStatus @default(draft)
   description String
-  totalValue  Decimal        @default(0)
-  discount    Decimal        @default(0)
+  totalValue  Decimal            @default(0)
+  discount    Decimal            @default(0)
   notes       String?
   approvedAt  DateTime?
   startedAt   DateTime?
   completedAt DateTime?
   deliveredAt DateTime?
-  createdAt   DateTime       @default(now())
-  updatedAt   DateTime       @updatedAt
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
 
-  items    ServiceOrderItem[]
-  history  ServiceOrderHistory[]
+  items            ServiceOrderItem[]
+  history          ServiceOrderHistory[]
+  financialRecords FinancialRecord[]
 
   @@unique([tenantId, orderNumber])
   @@index([tenantId, type, status, createdAt])
@@ -129,21 +193,21 @@ model ServiceOrder {
 }
 
 model ServiceOrderItem {
-  id              String       @id @default(cuid())
+  id              String             @id @default(cuid())
   serviceOrderId  String
-  serviceOrder    ServiceOrder @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
+  serviceOrder    ServiceOrder       @relation(fields: [serviceOrderId], references: [id], onDelete: Cascade)
   tenantId        String
 
-  type            String       // 'service', 'part'
+  type            ServiceOrderItemType
   description     String
-  quantity        Int          @default(1)
-  unitValue       Decimal      @default(0)
-  totalValue      Decimal      @default(0)
+  quantity        Int                @default(1)
+  unitValue       Decimal            @default(0)
+  totalValue      Decimal            @default(0)
   partnerId       String?
-  partner         Partner?     @relation(fields: [partnerId], references: [id])
-  partnerCost     Decimal?     // custo real do terceirizado
+  partner         Partner?           @relation(fields: [partnerId], references: [id])
+  partnerCost     Decimal?
   inventoryItemId String?
-  inventoryItem   InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  inventoryItem   InventoryItem?     @relation(fields: [inventoryItemId], references: [id])
 
   @@index([serviceOrderId])
   @@index([tenantId])
@@ -255,24 +319,28 @@ model Partner {
 }
 
 model FinancialRecord {
-  id          String   @id @default(cuid())
+  id          String          @id @default(cuid())
   tenantId    String
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
-  type        String   // 'receivable', 'payable'
+  type        FinancialType
   description String
   value       Decimal
-  status      String   @default("pending") // pending, paid, cancelled
+  status      FinancialStatus @default(pending)
   dueDate     DateTime
   paidAt      DateTime?
   category    String?
+
   serviceOrderId String?
+  serviceOrder   ServiceOrder? @relation(fields: [serviceOrderId], references: [id], onDelete: SetNull)
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([tenantId, type, status])
   @@index([tenantId, dueDate])
   @@index([tenantId, createdAt])
+  @@index([serviceOrderId])
 }
 
 model ServiceOrderHistory {
@@ -292,15 +360,15 @@ model ServiceOrderHistory {
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   tenantId    String
   userId      String?
-  action      String   // 'create', 'update', 'delete'
-  entity      String   // 'customer', 'vehicle', 'service_order', 'inventory', 'financial_record'
+  action      AuditAction
+  entity      String     // 'customer', 'vehicle', 'service_order', 'inventory', 'financial_record'
   entityId    String
   oldValues   Json?
   newValues   Json?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime   @default(now())
 
   @@index([tenantId, entity, createdAt])
   @@index([tenantId, userId])

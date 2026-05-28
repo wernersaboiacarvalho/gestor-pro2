@@ -1,12 +1,14 @@
-export type BusinessType = "workshop" | "salon" | "gym"
-
-export type UserRole = "super_admin" | "admin" | "user"
-
-export type ServiceOrderStatus = "pending" | "in_progress" | "completed" | "cancelled"
-
-export type FinancialType = "receivable" | "payable"
-
-export type FinancialStatus = "pending" | "paid" | "cancelled"
+export type {
+  UserRole,
+  BusinessType,
+  TenantPlan,
+  TenantStatus,
+  ServiceOrderType,
+  ServiceOrderStatus,
+  ServiceOrderItemType,
+  FinancialType,
+  FinancialStatus,
+} from "@/generated/prisma"
 
 export interface PaginationParams {
   page: number

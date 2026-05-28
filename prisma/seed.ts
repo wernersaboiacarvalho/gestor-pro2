@@ -11,7 +11,12 @@ const pool = new Pool({
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
-const PASSWORD = "123456"
+const PASSWORD = process.env.SEED_PASSWORD ?? generatePassword()
+
+function generatePassword(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+  return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
+}
 const TENANTS_COUNT = 20
 const CUSTOMERS_PER_TENANT = [6, 10] // min, max
 const VEHICLES_PER_CUSTOMER = [1, 3]
@@ -523,7 +528,8 @@ async function main() {
   console.log(`   Itens de OS:    ${totals.orderItems}`)
   console.log(`   Financeiro:     ${totals.financialRecords}`)
   console.log(`\nTotal registros: ${Object.values(totals).reduce((a, b) => a + b, 0)}`)
-  console.log(`\n🔑 Senha padrão para todos os usuários: ${PASSWORD}`)
+  console.log(`\n🔑 Senha dos usuários seed: ${PASSWORD}`)
+  console.log("   (Defina SEED_PASSWORD no .env para usar uma senha fixa)")
   console.log(`   Emails: admin@{tenant-slug}-{n}.com, user@{tenant-slug}-{n}.com`)
 }
 
