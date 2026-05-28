@@ -1,20 +1,32 @@
 import { PrismaClient } from "@/generated/prisma"
+import { PrismaPg } from "@prisma/adapter-pg"
+import { Pool } from "pg"
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient
 }
 
 function makePrismaClient() {
+  const pool = new Pool({
+    connectionString: process.env.DATABASE_URL!,
+    max: 1,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  })
+  const adapter = new PrismaPg(pool)
+
   const client = new PrismaClient({
+    adapter,
     log: process.env.NODE_ENV === "development" ? ["query", "error"] : ["error"],
   })
 
-  // Prisma Accelerate — descomente as linhas abaixo quando configurar
-  // o Accelerate no console.prisma.io e definir DATABASE_URL com
-  // o protocolo prisma+postgres://:
+  // Prisma Accelerate — quando configurar no console.prisma.io:
+  // 1. Remova o `pool`, `adapter` e `PrismaPg` acima
+  // 2. Descomente as linhas abaixo
+  // 3. Defina DATABASE_URL com o protocolo prisma+postgres://
   //
   // import { withAccelerate } from "@prisma/extension-accelerate"
-  // return client.$extends(withAccelerate())
+  // const client = new PrismaClient().$extends(withAccelerate())
 
   return client
 }
