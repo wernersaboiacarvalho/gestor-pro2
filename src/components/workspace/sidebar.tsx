@@ -20,9 +20,11 @@ import {
   PanelLeftOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { signOut } from "next-auth/react"
+import { signOut, useSession } from "next-auth/react"
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import type { Permission, Role } from "@/lib/permissions"
+import { hasPermission } from "@/lib/permissions"
 
 interface TenantInfo {
   name: string
@@ -36,19 +38,19 @@ interface Props {
 }
 
 const navItems = [
-  { href: "", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clientes", label: "Clientes", icon: Users },
-  { href: "/veiculos", label: "Veículos", icon: Car },
-  { href: "/ordens-servico", label: "Ordens de Serviço", icon: ClipboardList },
-  { href: "/mecanicos", label: "Mecânicos", icon: Wrench },
-  { href: "/terceirizados", label: "Terceirizados", icon: Building2 },
-  { href: "/estoque", label: "Estoque", icon: Package },
-  { href: "/fornecedores", label: "Fornecedores", icon: Truck },
-  { href: "/financeiro", label: "Financeiro", icon: DollarSign },
+  { href: "", label: "Dashboard", icon: LayoutDashboard, permission: "" as Permission },
+  { href: "/clientes", label: "Clientes", icon: Users, permission: "customers.view" as Permission },
+  { href: "/veiculos", label: "Veículos", icon: Car, permission: "vehicles.view" as Permission },
+  { href: "/ordens-servico", label: "Ordens de Serviço", icon: ClipboardList, permission: "orders.view" as Permission },
+  { href: "/mecanicos", label: "Mecânicos", icon: Wrench, permission: "mechanics.view" as Permission },
+  { href: "/terceirizados", label: "Terceirizados", icon: Building2, permission: "partners.view" as Permission },
+  { href: "/estoque", label: "Estoque", icon: Package, permission: "inventory.view" as Permission },
+  { href: "/fornecedores", label: "Fornecedores", icon: Truck, permission: "suppliers.view" as Permission },
+  { href: "/financeiro", label: "Financeiro", icon: DollarSign, permission: "financial.view" as Permission },
 ]
 
 const bottomItems = [
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/configuracoes", label: "Configurações", icon: Settings, permission: "settings.view" as Permission },
 ]
 
 const businessLabels: Record<string, string> = {
@@ -66,13 +68,21 @@ function SidebarNav({
   isActive,
   collapsed,
   onLinkClick,
+  role,
 }: {
   tenant: TenantInfo
   base: string
   isActive: (href: string) => boolean
   collapsed: boolean
   onLinkClick?: () => void
+  role: Role
 }) {
+  const visibleNavItems = navItems.filter(
+    (item) => !item.permission || hasPermission(role, item.permission)
+  )
+  const visibleBottomItems = bottomItems.filter(
+    (item) => !item.permission || hasPermission(role, item.permission)
+  )
   return (
     <>
       <div className={`flex h-14 items-center gap-3 border-b border-zinc-200 px-3 dark:border-zinc-800 ${collapsed ? "justify-center px-0" : "px-4"}`}>
@@ -88,7 +98,7 @@ function SidebarNav({
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
-        {navItems.map((item) => {
+        {visibleNavItems.map((item) => {
           const active = isActive(item.href)
           const link = (
             <Link
@@ -126,7 +136,7 @@ function SidebarNav({
       </nav>
 
       <div className="border-t border-zinc-200 px-2 py-3 dark:border-zinc-800">
-        {bottomItems.map((item) => {
+        {visibleBottomItems.map((item) => {
           const active = isActive(item.href)
           const link = (
             <Link
@@ -187,6 +197,8 @@ function SidebarNav({
 
 export function WorkspaceShell({ tenant, children }: Props) {
   const pathname = usePathname()
+  const { data: session } = useSession()
+  const role = (session?.user?.role ?? "user") as Role
   const base = `/workspace/${tenant.slug}`
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => {
@@ -221,6 +233,7 @@ export function WorkspaceShell({ tenant, children }: Props) {
           base={base}
           isActive={isActive}
           collapsed={collapsed}
+          role={role}
         />
       </aside>
 
@@ -255,6 +268,7 @@ export function WorkspaceShell({ tenant, children }: Props) {
             isActive={isActive}
             collapsed={false}
             onLinkClick={() => setMobileOpen(false)}
+            role={role}
           />
         </SheetContent>
       </Sheet>
