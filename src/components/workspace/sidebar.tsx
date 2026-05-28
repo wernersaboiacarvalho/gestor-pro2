@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useState, useCallback } from "react"
 import {
   LayoutDashboard,
   Users,
@@ -14,9 +15,14 @@ import {
   Building2,
   Settings,
   LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { signOut } from "next-auth/react"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 interface TenantInfo {
   name: string
@@ -51,66 +57,120 @@ const businessLabels: Record<string, string> = {
   gym: "Academia",
 }
 
-export function WorkspaceShell({ tenant, children }: Props) {
-  const pathname = usePathname()
-  const base = `/workspace/${tenant.slug}`
+const SIDEBAR_WIDTH = 16
+const SIDEBAR_COLLAPSED_WIDTH = 4
 
-  function isActive(href: string) {
-    if (href === "") return pathname === base || pathname === `${base}/dashboard`
-    return pathname.startsWith(`${base}${href}`)
-  }
-
+function SidebarNav({
+  tenant,
+  base,
+  isActive,
+  collapsed,
+  onLinkClick,
+}: {
+  tenant: TenantInfo
+  base: string
+  isActive: (href: string) => boolean
+  collapsed: boolean
+  onLinkClick?: () => void
+}) {
   return (
-    <div className="grid min-h-screen grid-cols-[16rem_minmax(0,1fr)] bg-zinc-50 dark:bg-zinc-950">
-      <aside className="flex w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shrink-0">
-        <div className="flex h-16 items-center gap-3 border-b border-zinc-200 px-6 dark:border-zinc-800">
-          <div className="flex size-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
-            <span className="text-sm font-bold">G</span>
-          </div>
+    <>
+      <div className={`flex h-14 items-center gap-3 border-b border-zinc-200 px-3 dark:border-zinc-800 ${collapsed ? "justify-center px-0" : "px-4"}`}>
+        <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+          <span className="text-sm font-bold">G</span>
+        </div>
+        {!collapsed && (
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{tenant.name}</p>
             <p className="truncate text-xs text-muted-foreground">{businessLabels[tenant.businessType] ?? tenant.businessType}</p>
           </div>
-        </div>
+        )}
+      </div>
 
-        <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
-          {navItems.map((item) => {
-            const active = isActive(item.href)
-            return (
-              <Link
-                key={item.href}
-                href={`${base}${item.href === "" ? "/dashboard" : item.href}`}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                  active
-                    ? "bg-zinc-100 text-primary dark:bg-zinc-800 dark:text-primary-foreground"
-                    : "text-zinc-600 dark:text-zinc-400"
-                }`}
-              >
-                <item.icon className={`size-4 ${active ? "text-primary" : ""}`} />
-                {item.label}
-                {active && (
-                  <div className="ml-auto size-1.5 rounded-full bg-primary" />
-                )}
-              </Link>
-            )
-          })}
-        </nav>
-
-        <div className="border-t border-zinc-200 px-3 py-3 dark:border-zinc-800">
-          {bottomItems.map((item) => (
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-2 py-3">
+        {navItems.map((item) => {
+          const active = isActive(item.href)
+          const link = (
             <Link
               key={item.href}
-              href={`${base}${item.href}`}
+              href={`${base}${item.href === "" ? "/dashboard" : item.href}`}
+              onClick={onLinkClick}
               className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
-                isActive(item.href)
+                collapsed ? "justify-center px-2" : ""
+              } ${
+                active
                   ? "bg-zinc-100 text-primary dark:bg-zinc-800 dark:text-primary-foreground"
                   : "text-zinc-600 dark:text-zinc-400"
               }`}
             >
-              <item.icon className="size-4" />
-              {item.label}
+              <item.icon className={`size-4 shrink-0 ${active ? "text-primary" : ""}`} />
+              {!collapsed && (
+                <>
+                  {item.label}
+                  {active && <div className="ml-auto size-1.5 rounded-full bg-primary" />}
+                </>
+              )}
             </Link>
-          ))}
+          )
+
+          if (collapsed) {
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>{link}</TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            )
+          }
+          return <div key={item.href}>{link}</div>
+        })}
+      </nav>
+
+      <div className="border-t border-zinc-200 px-2 py-3 dark:border-zinc-800">
+        {bottomItems.map((item) => {
+          const active = isActive(item.href)
+          const link = (
+            <Link
+              key={item.href}
+              href={`${base}${item.href}`}
+              onClick={onLinkClick}
+              className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all hover:bg-zinc-100 dark:hover:bg-zinc-800 ${
+                collapsed ? "justify-center px-2" : ""
+              } ${
+                active
+                  ? "bg-zinc-100 text-primary dark:bg-zinc-800 dark:text-primary-foreground"
+                  : "text-zinc-600 dark:text-zinc-400"
+              }`}
+            >
+              <item.icon className="size-4 shrink-0" />
+              {!collapsed && item.label}
+            </Link>
+          )
+
+          if (collapsed) {
+            return (
+              <Tooltip key={item.href}>
+                <TooltipTrigger asChild>{link}</TooltipTrigger>
+                <TooltipContent side="right">{item.label}</TooltipContent>
+              </Tooltip>
+            )
+          }
+          return <div key={item.href}>{link}</div>
+        })}
+
+        {collapsed ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={() => signOut()}
+                variant="ghost"
+                className="mt-2 w-full justify-center rounded-lg px-2 py-2.5 text-sm font-medium text-zinc-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950 dark:hover:text-red-400"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">Sair</TooltipContent>
+          </Tooltip>
+        ) : (
           <Button
             onClick={() => signOut()}
             variant="ghost"
@@ -119,11 +179,102 @@ export function WorkspaceShell({ tenant, children }: Props) {
             <LogOut className="size-4" />
             Sair
           </Button>
-        </div>
+        )}
+      </div>
+    </>
+  )
+}
+
+export function WorkspaceShell({ tenant, children }: Props) {
+  const pathname = usePathname()
+  const base = `/workspace/${tenant.slug}`
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window === "undefined") return false
+    return localStorage.getItem("sidebar-collapsed") === "true"
+  })
+
+  const toggleCollapse = useCallback(() => {
+    setCollapsed((prev) => {
+      const next = !prev
+      localStorage.setItem("sidebar-collapsed", String(next))
+      return next
+    })
+  }, [])
+
+  function isActive(href: string) {
+    if (href === "") return pathname === base || pathname === `${base}/dashboard`
+    return pathname.startsWith(`${base}${href}`)
+  }
+
+  const sidebarWidth = collapsed ? SIDEBAR_COLLAPSED_WIDTH : SIDEBAR_WIDTH
+
+  return (
+    <div
+      className="grid min-h-screen bg-zinc-50 dark:bg-zinc-950 transition-[grid-template-columns] duration-200"
+      style={{ gridTemplateColumns: `${sidebarWidth}rem minmax(0,1fr)` }}
+    >
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-full flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 shrink-0">
+        <SidebarNav
+          tenant={tenant}
+          base={base}
+          isActive={isActive}
+          collapsed={collapsed}
+        />
       </aside>
 
+      {/* Mobile header */}
+      <div className="col-span-full flex items-center border-b border-zinc-200 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setMobileOpen(true)}
+          className="mr-3"
+        >
+          <Menu className="size-5" />
+          <span className="sr-only">Abrir menu</span>
+        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex size-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-primary/70 text-primary-foreground">
+            <span className="text-xs font-bold">G</span>
+          </div>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{tenant.name}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile sheet */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left" className="w-64 p-0" showCloseButton={false}>
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+          <SidebarNav
+            tenant={tenant}
+            base={base}
+            isActive={isActive}
+            collapsed={false}
+            onLinkClick={() => setMobileOpen(false)}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Main content */}
       <main className="min-w-0">
-        <div className="w-full max-w-none p-4 lg:p-8">{children}</div>
+        {/* Desktop collapse toggle */}
+        <div className="hidden lg:block">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleCollapse}
+            className="fixed top-3 z-30 border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900"
+            style={{ left: `${sidebarWidth * 4 + 0.5}rem` }}
+          >
+            {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+            <span className="sr-only">{collapsed ? "Expandir menu" : "Recolher menu"}</span>
+          </Button>
+        </div>
+        <div className="w-full max-w-none p-4 lg:p-8 lg:pt-14">{children}</div>
       </main>
     </div>
   )
