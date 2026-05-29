@@ -58,16 +58,16 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
       fetch(`/api/vehicles?tenantId=${tenantId}`)
         .then((r) => r.json())
         .then(setVehicles)
-        .catch(() => {})
+        .catch((err) => console.error("[budget-form] vehicles", err))
 
       fetch(`/api/users?tenantId=${tenantId}&role=mechanic`)
         .then((r) => r.json())
         .then(setMechanics)
-        .catch(() => {})
+        .catch((err) => console.error("[budget-form] mechanics", err))
       fetch(`/api/partners?tenantId=${tenantId}`)
         .then((r) => r.json())
         .then(setPartners)
-        .catch(() => {})
+        .catch((err) => console.error("[budget-form] partners", err))
     }
   }, [tenantId])
 

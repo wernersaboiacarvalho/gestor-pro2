@@ -65,21 +65,27 @@ export default async function TenantDashboardPage({ params }: Props) {
       _count: { status: true },
     }),
     (async () => {
+      const rows = await prisma.$queryRaw<{ month: Date; revenue: number }[]>`
+        SELECT
+          date_trunc('month', "completedAt") AS month,
+          COALESCE(SUM("totalValue"), 0)::float AS revenue
+        FROM "ServiceOrder"
+        WHERE "tenantId" = ${tenantId}
+          AND status IN ('completed', 'delivered')
+          AND "completedAt" >= date_trunc('month', now()) - interval '5 months'
+        GROUP BY month
+        ORDER BY month ASC
+      `
+
       const months: { month: string; revenue: number }[] = []
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-        const nextMonth = new Date(d.getFullYear(), d.getMonth() + 1, 1)
-        const agg = await prisma.serviceOrder.aggregate({
-          where: {
-            tenantId,
-            status: { in: ["completed", "delivered"] },
-            completedAt: { gte: d, lt: nextMonth },
-          },
-          _sum: { totalValue: true },
-        })
+        const found = rows.find(
+          (r) => new Date(r.month).getMonth() === d.getMonth() && new Date(r.month).getFullYear() === d.getFullYear()
+        )
         months.push({
           month: d.toLocaleDateString("pt-BR", { month: "short" }),
-          revenue: Number(agg._sum.totalValue ?? 0),
+          revenue: found ? found.revenue : 0,
         })
       }
       return months

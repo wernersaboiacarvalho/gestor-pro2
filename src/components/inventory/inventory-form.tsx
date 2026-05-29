@@ -62,7 +62,7 @@ export function InventoryForm({ tenantSlug, tenantId, defaultValues }: Props) {
     fetch(`/api/suppliers?tenantId=${tenantId}`)
       .then((r) => r.json())
       .then(setSuppliers)
-      .catch(() => {})
+      .catch((err) => console.error("[inventory-form] suppliers", err))
   }, [tenantId])
 
   async function onSubmit(data: InventoryInput) {

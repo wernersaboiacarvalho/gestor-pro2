@@ -52,7 +52,7 @@ export function VehicleForm({ tenantSlug, tenantId, defaultValues }: Props) {
     fetch(`/api/customers?tenantId=${tenantId}`)
       .then((r) => r.json())
       .then(setCustomers)
-      .catch(() => {})
+      .catch((err) => console.error("[vehicle-form] customers", err))
   }, [tenantId])
 
   async function onSubmit(data: VehicleInput) {

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "seed": "tsx prisma/seed.ts",
     "vercel-build": "npx prisma generate && npx next build",
     "postinstall": "prisma generate"
@@ -18,6 +19,7 @@
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@prisma/extension-accelerate": "^3.0.1",
+    "@sentry/nextjs": "^10.55.0",
     "@tanstack/react-query": "^5.100.14",
     "@upstash/redis": "^1.38.0",
     "bcryptjs": "^3.0.3",

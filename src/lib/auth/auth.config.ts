@@ -12,18 +12,6 @@ export const authConfig: NextAuthConfig = {
         token.role = user.role!
         token.tenantId = user.tenantId!
       }
-
-      if (token.tenantId && !user) {
-        const { prisma } = await import("@/lib/db/prisma")
-        const tenant = await prisma.tenant.findUnique({
-          where: { id: token.tenantId as string },
-          select: { id: true },
-        })
-        if (!tenant) {
-          token.tenantId = undefined
-        }
-      }
-
       return token
     },
     async session({ session, token }) {

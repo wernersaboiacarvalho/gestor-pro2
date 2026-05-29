@@ -32,6 +32,15 @@ export async function sendEmail({
   })
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;")
+}
+
 export function serviceOrderEmailTemplate({
   customerName,
   orderNumber,
@@ -45,9 +54,9 @@ export function serviceOrderEmailTemplate({
 }) {
   return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2>${tenantName} - Ordem de Serviço</h2>
-      <p>Olá <strong>${customerName}</strong>,</p>
-      <p>Sua ordem de serviço <strong>#${orderNumber}</strong> está com status: <strong>${status}</strong>.</p>
+      <h2>${escapeHtml(tenantName)} - Ordem de Serviço</h2>
+      <p>Olá <strong>${escapeHtml(customerName)}</strong>,</p>
+      <p>Sua ordem de serviço <strong>#${escapeHtml(orderNumber)}</strong> está com status: <strong>${escapeHtml(status)}</strong>.</p>
       <hr />
       <p style="color: #666; font-size: 12px;">Este é um e-mail automático. Por favor, não responda.</p>
     </div>

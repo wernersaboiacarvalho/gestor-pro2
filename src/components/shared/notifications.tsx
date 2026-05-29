@@ -40,7 +40,7 @@ export function Notifications({ baseUrl }: { baseUrl: string }) {
         .then((data) => {
           if (!cancelled) setNotifications(data)
         })
-        .catch(() => {})
+        .catch((err) => console.error("[notifications]", err))
     }
 
     load()
