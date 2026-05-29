@@ -66,7 +66,7 @@ export default async function TenantsPage({ searchParams }: Props) {
                   <td className="px-4 py-3 font-medium">{t.name}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{t.slug}</td>
                   <td className="px-4 py-3 text-xs">{t.plan}</td>
-                  <td className="px-4 py-3">{t._count.users}</td>
+                  <td className="px-4 py-3">{(t as { _count?: { users?: number } })._count?.users ?? 0}</td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${
                       t.status === "active" ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"

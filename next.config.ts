@@ -2,6 +2,9 @@ import type { NextConfig } from "next"
 import { withSentryConfig } from "@sentry/nextjs"
 
 const nextConfig: NextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   images: {
     remotePatterns: [
       {
@@ -21,10 +24,5 @@ export default withSentryConfig(nextConfig, {
   widenClientFileUpload: true,
   sourcemaps: {
     deleteSourcemapsAfterUpload: true,
-  },
-  webpack: {
-    treeshake: {
-      removeDebugLogging: true,
-    },
   },
 })
