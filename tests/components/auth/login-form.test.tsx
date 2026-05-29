@@ -40,7 +40,7 @@ describe("LoginForm", () => {
     await user.click(screen.getByRole("button", { name: /entrar/i }))
 
     expect(await screen.findByText(/email inválido/i)).toBeInTheDocument()
-    expect(screen.getByText(/mínimo 6 caracteres/i)).toBeInTheDocument()
+    expect(screen.getByText(/senha é obrigatória/i)).toBeInTheDocument()
   })
 
   it("shows email error for invalid email", async () => {

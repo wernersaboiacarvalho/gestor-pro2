@@ -35,21 +35,89 @@ const plateSchema = z
     )
   )
 
+export const passwordSchema = z
+  .string()
+  .min(8, "Mínimo 8 caracteres")
+  .max(128, "Máximo 128 caracteres")
+  .regex(/[A-Z]/, "Pelo menos 1 letra maiúscula")
+  .regex(/[a-z]/, "Pelo menos 1 letra minúscula")
+  .regex(/[0-9]/, "Pelo menos 1 número")
+  .regex(/[!@#$%^&*()_+\-=\[\]{}|;':",.<>\/?]/, "Pelo menos 1 caractere especial")
+
+const COMMON_PASSWORDS = [
+  "123456", "12345678", "123456789", "password", "senha123",
+  "1234567", "qwerty123", "abc123", "111111", "iloveyou",
+  "admin123", "brasil", "futebol", "flamengo", "palmeiras",
+  "102030", "123mudar", "mudar123", "teste123", "123teste",
+] as const
+
+export const strongPasswordSchema = passwordSchema.refine(
+  (val) => !COMMON_PASSWORDS.includes(val.toLowerCase() as (typeof COMMON_PASSWORDS)[number]),
+  { message: "Essa senha é muito comum. Escolha outra." }
+)
+
+export function getPasswordStrength(password: string): { score: number; label: string; color: string } {
+  if (!password) return { score: 0, label: "", color: "bg-zinc-200" }
+  let score = 0
+  if (password.length >= 8) score++
+  if (/[A-Z]/.test(password)) score++
+  if (/[a-z]/.test(password)) score++
+  if (/[0-9]/.test(password)) score++
+  if (/[!@#$%^&*()_+\-=\[\]{}|;':",.<>\/?]/.test(password)) score++
+  if (score <= 2) return { score, label: "Fraca", color: "bg-red-500" }
+  if (score <= 3) return { score, label: "Média", color: "bg-amber-500" }
+  return { score, label: "Forte", color: "bg-emerald-500" }
+}
+
 export const loginSchema = z.object({
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
+  password: z.string().min(1, "Senha é obrigatória"),
 })
 
 export const registerSchema = z.object({
   name: z.string().min(2, "Mínimo 2 caracteres"),
   email: z.string().email("Email inválido"),
-  password: z.string().min(6, "Mínimo 6 caracteres"),
+  password: strongPasswordSchema,
   confirmPassword: z.string(),
   tenantName: z.string().min(2, "Mínimo 2 caracteres"),
   tenantSlug: z.string().min(3, "Mínimo 3 caracteres").regex(/^[a-z0-9-]+$/, "Apenas letras minúsculas, números e hífens"),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Senhas não conferem",
   path: ["confirmPassword"],
+}).refine((data) => data.email.toLowerCase() !== data.password.toLowerCase(), {
+  message: "A senha não pode ser igual ao email",
+  path: ["password"],
+})
+
+export const inviteAcceptSchema = z.object({
+  token: z.string().min(1),
+  name: z.string().min(2, "Mínimo 2 caracteres"),
+  password: strongPasswordSchema,
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Senhas não conferem",
+  path: ["confirmPassword"],
+})
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  password: strongPasswordSchema,
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Senhas não conferem",
+  path: ["confirmPassword"],
+})
+
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Senha atual é obrigatória"),
+  newPassword: strongPasswordSchema,
+  confirmPassword: z.string(),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Senhas não conferem",
+  path: ["confirmPassword"],
+}).refine((data) => data.currentPassword !== data.newPassword, {
+  message: "A nova senha deve ser diferente da atual",
+  path: ["newPassword"],
 })
 
 export const customerSchema = z.object({
@@ -151,6 +219,9 @@ export const financialRecordSchema = z.object({
 
 export type LoginInput = z.infer<typeof loginSchema>
 export type RegisterInput = z.infer<typeof registerSchema>
+export type InviteAcceptInput = z.infer<typeof inviteAcceptSchema>
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>
 export type CustomerInput = z.infer<typeof customerSchema>
 export type VehicleInput = z.infer<typeof vehicleSchema>
 export type ServiceOrderInput = z.infer<typeof serviceOrderSchema>

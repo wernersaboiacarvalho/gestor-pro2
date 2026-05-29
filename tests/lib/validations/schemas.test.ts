@@ -28,7 +28,7 @@ describe("loginSchema", () => {
   })
 
   it("rejects short password", () => {
-    expect(() => loginSchema.parse({ email: "a@b.com", password: "123" })).toThrow()
+    expect(() => loginSchema.parse({ email: "a@b.com", password: "" })).toThrow("Senha é obrigatória")
   })
 })
 
@@ -39,8 +39,8 @@ describe("registerSchema", () => {
   const valid = {
     name: "João",
     email: "joao@test.com",
-    password: "123456",
-    confirmPassword: "123456",
+    password: "Minha@Senha1",
+    confirmPassword: "Minha@Senha1",
     tenantName: "Minha Oficina",
     tenantSlug: "minha-oficina",
   }

@@ -89,27 +89,63 @@ model Tenant {
   suppliers      Supplier[]
   partners         Partner[]
   financialRecords FinancialRecord[]
+  userInvites      UserInvite[]
 
   @@index([slug])
   @@index([status, createdAt])
 }
 
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String
-  name          String
-  image         String?
-  role          UserRole
-  tenantId      String?
-  tenant        Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  email          String   @unique
+  password       String
+  name           String
+  image          String?
+  role           UserRole
+  tenantId       String?
+  tenant         Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  active         Boolean  @default(true)
+  sessionVersion Int      @default(1)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  assignedOrders ServiceOrder[] @relation("AssignedMechanic")
+  assignedOrders   ServiceOrder[] @relation("AssignedMechanic")
+  sentInvites      UserInvite[]    @relation("Inviter")
+  resetTokens      PasswordResetToken[]
 
   @@index([email])
   @@index([tenantId, role])
+}
+
+model UserInvite {
+  id          String    @id @default(cuid())
+  tenantId    String
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  role        UserRole
+  token       String    @unique
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  invitedBy   String
+  inviter     User      @relation("Inviter", fields: [invitedBy], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@unique([tenantId, email])
+  @@index([token])
+  @@index([tenantId, email])
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([token])
+  @@index([userId])
 }
 
 model Customer {
