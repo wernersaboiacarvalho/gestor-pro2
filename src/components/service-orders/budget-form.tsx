@@ -1,7 +1,7 @@
 "use client"
 "use no memo"
 
-import { useForm, useFieldArray } from "react-hook-form"
+import { useForm, useFieldArray, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { serviceOrderSchema, type ServiceOrderInput } from "@/lib/validations/schemas"
 import { useRouter } from "next/navigation"
@@ -37,7 +37,6 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
     handleSubmit,
     control,
     setError,
-    watch,
     formState: { errors, isSubmitting },
   } = useForm<ServiceOrderInput>({
     resolver: zodResolver(serviceOrderSchema),
@@ -52,6 +51,11 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: "items" })
+  const watchedItems = useWatch({ control, name: "items" }) ?? []
+  const totalItemsValue = watchedItems.reduce(
+    (sum, item) => sum + Number(item?.quantity ?? 0) * Number(item?.unitValue ?? 0),
+    0
+  )
 
   useEffect(() => {
     if (tenantId) {
@@ -217,7 +221,7 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
                 </div>
                 <div className="sm:col-span-2">
                   <p className="py-1.5 text-sm font-semibold tabular-nums text-right">
-                    {(Number(watch(`items.${index}.quantity`) ?? 0) * Number(watch(`items.${index}.unitValue`) ?? 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                    {(Number(watchedItems[index]?.quantity ?? 0) * Number(watchedItems[index]?.unitValue ?? 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
                   </p>
                 </div>
                 <div className="sm:col-span-1 flex justify-end">
@@ -233,7 +237,7 @@ export function BudgetForm({ tenantSlug, tenantId, defaultValues }: Props) {
             <div className="border-t px-6 py-3 text-right">
               <span className="text-sm text-muted-foreground mr-4">Total:</span>
               <span className="text-lg font-bold text-primary tabular-nums">
-                {fields.reduce((sum, _, i) => sum + (Number(watch(`items.${i}.quantity`) ?? 0) * Number(watch(`items.${i}.unitValue`) ?? 0)), 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                {totalItemsValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
               </span>
             </div>
           )}

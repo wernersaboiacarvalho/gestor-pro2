@@ -1,7 +1,7 @@
 "use client"
 "use no memo"
 
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { financialRecordSchema, type FinancialRecordInput } from "@/lib/validations/schemas"
 import { useRouter } from "next/navigation"
@@ -38,7 +38,7 @@ export function FinancialForm({ tenantSlug, tenantId, defaultValues }: Props) {
     register,
     handleSubmit,
     setError,
-    watch,
+    control,
     formState: { errors, isSubmitting },
   } = useForm<FinancialRecordInput>({
     resolver: zodResolver(financialRecordSchema),
@@ -52,7 +52,7 @@ export function FinancialForm({ tenantSlug, tenantId, defaultValues }: Props) {
     },
   })
 
-  const selectedType = watch("type")
+  const selectedType = useWatch({ control, name: "type" })
 
   async function onSubmit(data: FinancialRecordInput) {
     try {

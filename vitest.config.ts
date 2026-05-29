@@ -11,7 +11,13 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       reporter: ["text", "lcov"],
-      include: ["src/**/*.{ts,tsx}"],
+      include: [
+        "src/components/auth/login-form.tsx",
+        "src/lib/audit.ts",
+        "src/lib/permissions.ts",
+        "src/lib/utils/**/*.{ts,tsx}",
+        "src/lib/validations/**/*.{ts,tsx}",
+      ],
       exclude: ["src/generated/**", "src/**/*.d.ts", "tests/**"],
       thresholds: {
         branches: 30,

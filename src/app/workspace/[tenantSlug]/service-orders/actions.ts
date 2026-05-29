@@ -39,8 +39,17 @@ function canTransition(from: string, to: string): boolean {
 }
 
 async function generateOrderNumber(tenantId: string): Promise<string> {
-  const count = await prisma.serviceOrder.count({ where: { tenantId } })
-  return String(count + 1).padStart(6, "0")
+  const lastOrder = await prisma.serviceOrder.findFirst({
+    where: { tenantId },
+    orderBy: { orderNumber: "desc" },
+    select: { orderNumber: true },
+  })
+  const lastNumber = Number.parseInt(lastOrder?.orderNumber ?? "0", 10)
+  return String((Number.isFinite(lastNumber) ? lastNumber : 0) + 1).padStart(6, "0")
+}
+
+function isUniqueConstraintError(error: unknown): boolean {
+  return error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002"
 }
 
 export async function getServiceOrders(
@@ -175,35 +184,51 @@ export async function createServiceOrder(
     const totalValue = new Decimal(itemsTotal)
     const discount = new Decimal(parsed.data.discount)
 
-    const orderNumber = await generateOrderNumber(tenantId)
+    let order: ServiceOrder | null = null
+    let orderNumber = ""
 
-    const order = await prisma.serviceOrder.create({
-      data: {
-        tenantId,
-        vehicleId: parsed.data.vehicleId,
-        mechanicId: parsed.data.mechanicId ?? null,
-        orderNumber,
-        type: "budget",
-        status: "draft",
-        description: parsed.data.description,
-        notes: parsed.data.notes,
-        discount,
-        totalValue,
-        items: {
-          create: items.map((item) => ({
+    for (let attempt = 0; attempt < 3; attempt++) {
+      orderNumber = await generateOrderNumber(tenantId)
+
+      try {
+        order = await prisma.serviceOrder.create({
+          data: {
             tenantId,
-            type: item.type,
-            description: item.description,
-            quantity: item.quantity,
-            unitValue: new Decimal(item.unitValue),
-            totalValue: new Decimal(item.unitValue * item.quantity),
-            partnerId: item.partnerId ?? null,
-            partnerCost: item.partnerCost ? new Decimal(item.partnerCost) : null,
-            inventoryItemId: item.inventoryItemId ?? null,
-          })),
-        },
-      },
-    })
+            vehicleId: parsed.data.vehicleId,
+            mechanicId: parsed.data.mechanicId ?? null,
+            orderNumber,
+            type: "budget",
+            status: "draft",
+            description: parsed.data.description,
+            notes: parsed.data.notes,
+            discount,
+            totalValue,
+            items: {
+              create: items.map((item) => ({
+                tenantId,
+                type: item.type,
+                description: item.description,
+                quantity: item.quantity,
+                unitValue: new Decimal(item.unitValue),
+                totalValue: new Decimal(item.unitValue * item.quantity),
+                partnerId: item.partnerId ?? null,
+                partnerCost: item.partnerCost ? new Decimal(item.partnerCost) : null,
+                inventoryItemId: item.inventoryItemId ?? null,
+              })),
+            },
+          },
+        })
+        break
+      } catch (error) {
+        if (!isUniqueConstraintError(error) || attempt === 2) throw error
+      }
+    }
+
+    if (!order) {
+      return { success: false, error: "Erro ao gerar nÃºmero da ordem de serviÃ§o" }
+    }
+
+    const createdOrder = order
 
     await Promise.all([
       prisma.auditLog.create({
@@ -212,14 +237,14 @@ export async function createServiceOrder(
           userId,
           action: "create",
           entity: "service_order",
-          entityId: order.id,
+          entityId: createdOrder.id,
           newValues: { ...parsed.data, orderNumber },
         },
       }),
       prisma.serviceOrderHistory.create({
         data: {
           tenantId,
-          serviceOrderId: order.id,
+          serviceOrderId: createdOrder.id,
           userId,
           action: "create",
           toStatus: "draft",
@@ -229,7 +254,7 @@ export async function createServiceOrder(
     ])
 
     revalidatePath("/workspace/[tenantSlug]/service-orders", "page")
-    return { success: true, data: order }
+    return { success: true, data: createdOrder }
   } catch (error) {
     console.error("[createServiceOrder]", error)
     return { success: false, error: "Erro ao criar ordem de serviço" }
@@ -330,12 +355,12 @@ const ACTION_TRANSITIONS: Record<StatusAction, { from: string; to: string }> = {
   send:     { from: "draft",       to: "sent" },
   approve:  { from: "sent",        to: "approved" },
   reject:   { from: "sent",        to: "rejected" },
-  convert:  { from: "approved",    to: "in_progress" },
+  convert:  { from: "approved",    to: "pending" },
   start:    { from: "pending",     to: "in_progress" },
   complete: { from: "in_progress", to: "completed" },
   deliver:  { from: "completed",   to: "delivered" },
   cancel:   { from: "*",           to: "cancelled" },
-  reopen:   { from: "cancelled",   to: "draft" },
+  reopen:   { from: "cancelled",   to: "pending" },
 }
 
 export async function transitionServiceOrder(
@@ -365,7 +390,6 @@ export async function transitionServiceOrder(
     const now = new Date()
     const timestampFields: Partial<Record<string, Date>> = {
       ...(action === "approve"  && { approvedAt: now }),
-      ...(action === "convert"  && { startedAt: now, type: "service_order" as unknown as Date }),
       ...(action === "start"    && { startedAt: now }),
       ...(action === "complete" && { completedAt: now }),
       ...(action === "deliver"  && { deliveredAt: now }),

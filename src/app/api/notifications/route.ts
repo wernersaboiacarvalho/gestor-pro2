@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db/prisma"
 import { requireAuth } from "@/lib/auth/api-auth"
 import { NextResponse } from "next/server"
+import { countLowStockItems, getLowStockItems } from "@/lib/db/inventory-queries"
 
 export async function GET() {
   const auth = await requireAuth()
@@ -13,7 +14,8 @@ export async function GET() {
   const [
     overdueFinancialRecords,
     overdueFinancialRecordsTotal,
-    lowStockItemsAll,
+    lowStockItemsTop5,
+    lowStockItemsTotal,
     staleOrders,
     staleOrdersTotal,
     pendingBudgets,
@@ -42,18 +44,8 @@ export async function GET() {
         dueDate: { lt: now },
       },
     }),
-    prisma.inventoryItem.findMany({
-      where: {
-        tenantId,
-      },
-      select: {
-        id: true,
-        name: true,
-        sku: true,
-        quantity: true,
-        minQuantity: true,
-      },
-    }),
+    getLowStockItems(tenantId, 5),
+    countLowStockItems(tenantId),
     prisma.serviceOrder.findMany({
       where: {
         tenantId,
@@ -102,12 +94,6 @@ export async function GET() {
       },
     }),
   ])
-
-  const lowStockItems = lowStockItemsAll
-    .filter((item) => item.quantity <= item.minQuantity)
-    .sort((a, b) => a.quantity - b.quantity)
-  const lowStockItemsTotal = lowStockItems.length
-  const lowStockItemsTop5 = lowStockItems.slice(0, 5)
 
   const notifications = [
     {

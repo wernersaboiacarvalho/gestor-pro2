@@ -6,10 +6,15 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient
 }
 
+function readPoolMax(): number {
+  const value = Number(process.env.DATABASE_POOL_MAX ?? 5)
+  return Number.isInteger(value) && value > 0 ? value : 5
+}
+
 function makePrismaClient() {
   const pool = new Pool({
     connectionString: process.env.DATABASE_URL!,
-    max: 1,
+    max: readPoolMax(),
     idleTimeoutMillis: 10000,
     connectionTimeoutMillis: 5000,
   })

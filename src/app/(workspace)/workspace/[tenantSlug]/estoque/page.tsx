@@ -1,5 +1,6 @@
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
+import { countLowStockItems, getLowStockItems } from "@/lib/db/inventory-queries"
 import Link from "next/link"
 import { Plus, Package, AlertTriangle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -34,28 +35,24 @@ export default async function InventoryPage({ params, searchParams }: Props) {
   }
   if (category) where.category = category
 
-  const total = await prisma.inventoryItem.count({ where: where as Record<string, unknown> })
-
-  const items = await prisma.inventoryItem.findMany({
-    where: where as Record<string, unknown>,
-    include: { supplier: { select: { name: true } } },
-    orderBy: { name: "asc" },
-    skip: (page - 1) * PAGE_SIZE,
-    take: PAGE_SIZE,
-  })
-
-  const categories = await prisma.inventoryItem.findMany({
-    where: { tenantId: tenant.id, category: { not: null } },
-    select: { category: true },
-    distinct: ["category"],
-    orderBy: { category: "asc" },
-  })
-
-  const allItems = await prisma.inventoryItem.findMany({
-    where: { tenantId: tenant.id },
-    select: { id: true, name: true, quantity: true, minQuantity: true },
-  })
-  const lowStock = allItems.filter((i) => i.quantity <= i.minQuantity)
+  const [total, items, categories, lowStockTotal, lowStockPreview] = await Promise.all([
+    prisma.inventoryItem.count({ where: where as Record<string, unknown> }),
+    prisma.inventoryItem.findMany({
+      where: where as Record<string, unknown>,
+      include: { supplier: { select: { name: true } } },
+      orderBy: { name: "asc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.inventoryItem.findMany({
+      where: { tenantId: tenant.id, category: { not: null } },
+      select: { category: true },
+      distinct: ["category"],
+      orderBy: { category: "asc" },
+    }),
+    countLowStockItems(tenant.id),
+    getLowStockItems(tenant.id, 5),
+  ])
 
   const totalPages = Math.ceil(total / PAGE_SIZE)
 
@@ -74,20 +71,20 @@ export default async function InventoryPage({ params, searchParams }: Props) {
         </Button>
       </div>
 
-      {lowStock.length > 0 && (
+      {lowStockTotal > 0 && (
         <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
           <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
             <AlertTriangle className="size-4" />
-            <span className="text-sm font-medium">{lowStock.length} item(ns) com estoque baixo</span>
+            <span className="text-sm font-medium">{lowStockTotal} item(ns) com estoque baixo</span>
           </div>
           <div className="mt-2 flex flex-wrap gap-2">
-            {lowStock.slice(0, 5).map((i) => (
+            {lowStockPreview.map((i) => (
               <span key={i.id} className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-700 dark:bg-amber-900 dark:text-amber-300">
                 {i.name} ({i.quantity}/{i.minQuantity})
               </span>
             ))}
-            {lowStock.length > 5 && (
-              <span className="text-xs text-amber-600">e mais {lowStock.length - 5}...</span>
+            {lowStockTotal > lowStockPreview.length && (
+              <span className="text-xs text-amber-600">e mais {lowStockTotal - lowStockPreview.length}...</span>
             )}
           </div>
         </div>

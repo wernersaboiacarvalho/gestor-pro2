@@ -6,7 +6,7 @@ import { prisma } from "@/lib/db/prisma"
 import { inventorySchema, type InventoryInput } from "@/lib/validations/schemas"
 import { z } from "zod"
 import type { ApiResponse, PaginatedResult } from "@/types"
-import type { InventoryItem, InventoryMovement } from "@/generated/prisma"
+import type { InventoryItem, InventoryMovement, Prisma } from "@/generated/prisma"
 
 export type InventoryItemWithSupplier = InventoryItem & {
   supplier: { id: string; name: string } | null
@@ -38,7 +38,7 @@ export async function getInventoryItems(
   try {
     const { tenantId } = await requireTenantContext()
 
-    const where = {
+    const where: Prisma.InventoryItemWhereInput = {
       tenantId,
       ...(category && { category }),
       ...(lowStockOnly && {
@@ -53,20 +53,16 @@ export async function getInventoryItems(
       }),
     }
 
-    const allItems = await prisma.inventoryItem.findMany({
-      where: lowStockOnly
-        ? { tenantId, ...(category && { category }), ...(search && { name: { contains: search, mode: "insensitive" as const } }) }
-        : where,
-      include: { supplier: { select: { id: true, name: true } } },
-      orderBy: { name: "asc" },
-    })
-
-    const filtered = lowStockOnly
-      ? allItems.filter((i) => i.quantity <= i.minQuantity)
-      : allItems
-
-    const total = filtered.length
-    const data = filtered.slice((page - 1) * pageSize, page * pageSize)
+    const [data, total] = await Promise.all([
+      prisma.inventoryItem.findMany({
+        where,
+        include: { supplier: { select: { id: true, name: true } } },
+        orderBy: { name: "asc" },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.inventoryItem.count({ where }),
+    ])
 
     return {
       success: true,

@@ -1,5 +1,6 @@
 import { getTenantContext } from "@/lib/auth/tenant-context"
 import { prisma } from "@/lib/db/prisma"
+import { getLowStockItems } from "@/lib/db/inventory-queries"
 import Link from "next/link"
 import { Wrench, CheckCircle, DollarSign, AlertTriangle, ArrowRight, Clock, Calendar, TrendingUp, Users } from "lucide-react"
 import { DashboardCharts } from "@/components/dashboard/charts"
@@ -47,11 +48,7 @@ export default async function TenantDashboardPage({ params }: Props) {
       orderBy: { dueDate: "asc" },
       take: 5,
     }),
-    prisma.inventoryItem.findMany({
-      where: { tenantId },
-      orderBy: { quantity: "asc" },
-      take: 50,
-    }).then(items => items.filter(i => i.quantity <= i.minQuantity).slice(0, 5)),
+    getLowStockItems(tenantId, 5),
     prisma.customer.count({ where: { tenantId } }),
     prisma.financialRecord.count({
       where: { tenantId, status: "pending", dueDate: { lt: now } },
