@@ -22,7 +22,7 @@ export default function UsersPage() {
   async function load() {
     const [r1, r2] = await Promise.all([getTenantUsers(), getPendingInvites()])
     if (r1.data) setUsers(r1.data)
-    if (r2.data) setInvites(r2.data)
+    if (r2.data) setInvites(r2.data as unknown as InviteInfo[])
   }
 
   useEffect(() => {

@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["bcryptjs", "@prisma/client", "prisma", "@prisma/adapter-pg", "pg"],
+  serverExternalPackages: ["bcryptjs", "@prisma/client", "prisma"],
 }
 
 export default withSentryConfig(nextConfig, {

@@ -5,13 +5,13 @@ import { hash } from "bcryptjs"
 import "dotenv/config"
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL!,
+  connectionString: process.env.DIRECT_URL!,
   max: 1,
 })
 const adapter = new PrismaPg(pool)
 const prisma = new PrismaClient({ adapter })
 
-const PASSWORD = process.env.SEED_PASSWORD ?? generatePassword()
+const PASSWORD = process.env.SEED_PASSWORD || generatePassword()
 
 function generatePassword(): string {
   const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"

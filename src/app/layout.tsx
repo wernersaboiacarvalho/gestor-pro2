@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { Providers } from "@/components/shared/providers"
+import { Analytics } from "@vercel/analytics/react"
 import "./globals.css"
 
 const geistSans = Geist({
@@ -30,6 +31,7 @@ export default function RootLayout({
         <Providers>
           <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   )

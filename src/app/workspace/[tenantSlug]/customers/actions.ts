@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireTenantContext } from "@/lib/auth/tenant"
 import { prisma } from "@/lib/db/prisma"
+import { getCached, setCache, invalidateCache, hashForCache } from "@/lib/cache/redis"
 import { customerSchema, type CustomerInput } from "@/lib/validations/schemas"
 import type { ApiResponse, PaginatedResult } from "@/types"
 import type { Customer, Vehicle } from "@/generated/prisma"
@@ -18,6 +19,10 @@ export async function getCustomers(
 ): Promise<ApiResponse<PaginatedResult<Customer>>> {
   try {
     const { tenantId } = await requireTenantContext()
+
+    const cacheSuffix = `p${page}:${hashForCache(search ?? "")}`
+    const cached = await getCached<PaginatedResult<Customer>>(tenantId, "customers", cacheSuffix)
+    if (cached) return { success: true, data: cached }
 
     const where = {
       tenantId,
@@ -41,10 +46,9 @@ export async function getCustomers(
       prisma.customer.count({ where }),
     ])
 
-    return {
-      success: true,
-      data: { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) },
-    }
+    const result = { data, total, page, pageSize, totalPages: Math.ceil(total / pageSize) }
+    await setCache(tenantId, "customers", result, 30, cacheSuffix)
+    return { success: true, data: result }
   } catch (error) {
     console.error("[getCustomers]", error)
     return { success: false, error: "Erro ao buscar clientes" }
@@ -66,7 +70,7 @@ export async function getCustomerById(
       return { success: false, error: "Cliente não encontrado" }
     }
 
-    return { success: true, data: customer }
+    return { success: true, data: customer as CustomerWithVehicles }
   } catch (error) {
     console.error("[getCustomerById]", error)
     return { success: false, error: "Erro ao buscar cliente" }
@@ -118,6 +122,7 @@ export async function createCustomer(
       },
     })
 
+    await invalidateCache(tenantId, "customers")
     revalidatePath("/workspace/[tenantSlug]/customers", "page")
     return { success: true, data: customer }
   } catch (error) {
@@ -160,6 +165,7 @@ export async function updateCustomer(
       },
     })
 
+    await invalidateCache(tenantId, "customers")
     revalidatePath("/workspace/[tenantSlug]/customers", "page")
     return { success: true, data: customer }
   } catch (error) {
@@ -204,6 +210,7 @@ export async function deleteCustomer(id: string): Promise<ApiResponse<void>> {
       },
     })
 
+    await invalidateCache(tenantId, "customers")
     revalidatePath("/workspace/[tenantSlug]/customers", "page")
     return { success: true }
   } catch (error) {

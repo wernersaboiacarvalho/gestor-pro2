@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { getCached, setCache, invalidateCache } from "@/lib/cache/redis"
 import { requireTenantContext } from "@/lib/auth/tenant"
 import { prisma } from "@/lib/db/prisma"
 import {
@@ -53,11 +54,17 @@ export async function getSuppliersForSelect(): Promise<
 > {
   try {
     const { tenantId } = await requireTenantContext()
+
+    const cached = await getCached<{ id: string; name: string }[]>(tenantId, "suppliers:select")
+    if (cached) return { success: true, data: cached }
+
     const suppliers = await prisma.supplier.findMany({
       where: { tenantId },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     })
+
+    await setCache(tenantId, "suppliers:select", suppliers, 300)
     return { success: true, data: suppliers }
   } catch (error) {
     console.error("[getSuppliersForSelect]", error)
@@ -88,6 +95,7 @@ export async function createSupplier(
       },
     })
 
+    await invalidateCache(tenantId, "suppliers")
     revalidatePath("/workspace/[tenantSlug]/suppliers", "page")
     return { success: true, data: supplier }
   } catch (error) {
@@ -123,6 +131,7 @@ export async function updateSupplier(
       },
     })
 
+    await invalidateCache(tenantId, "suppliers")
     revalidatePath("/workspace/[tenantSlug]/suppliers", "page")
     return { success: true, data: supplier }
   } catch (error) {
@@ -158,6 +167,7 @@ export async function deleteSupplier(id: string): Promise<ApiResponse<void>> {
       },
     })
 
+    await invalidateCache(tenantId, "suppliers")
     revalidatePath("/workspace/[tenantSlug]/suppliers", "page")
     return { success: true }
   } catch (error) {

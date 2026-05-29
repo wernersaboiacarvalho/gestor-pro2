@@ -1,6 +1,7 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
+import { getCached, setCache, invalidateCache } from "@/lib/cache/redis"
 import { requireTenantContext } from "@/lib/auth/tenant"
 import { prisma } from "@/lib/db/prisma"
 import { mechanicSchema, type MechanicInput } from "@/lib/validations/schemas"
@@ -54,12 +55,16 @@ export async function getMechanicsForSelect(): Promise<
   try {
     const { tenantId } = await requireTenantContext()
 
+    const cached = await getCached<{ id: string; name: string; specialty: string | null }[]>(tenantId, "mechanics:select")
+    if (cached) return { success: true, data: cached }
+
     const mechanics = await prisma.mechanic.findMany({
       where: { tenantId, active: true },
       select: { id: true, name: true, specialty: true },
       orderBy: { name: "asc" },
     })
 
+    await setCache(tenantId, "mechanics:select", mechanics, 300)
     return { success: true, data: mechanics }
   } catch (error) {
     console.error("[getMechanicsForSelect]", error)
@@ -111,6 +116,7 @@ export async function createMechanic(
       },
     })
 
+    await invalidateCache(tenantId, "mechanics")
     revalidatePath("/workspace/[tenantSlug]/mechanics", "page")
     return { success: true, data: mechanic }
   } catch (error) {
@@ -153,6 +159,7 @@ export async function updateMechanic(
       },
     })
 
+    await invalidateCache(tenantId, "mechanics")
     revalidatePath("/workspace/[tenantSlug]/mechanics", "page")
     return { success: true, data: mechanic }
   } catch (error) {
@@ -189,6 +196,7 @@ export async function toggleMechanicActive(
       },
     })
 
+    await invalidateCache(tenantId, "mechanics")
     revalidatePath("/workspace/[tenantSlug]/mechanics", "page")
     return { success: true, data: mechanic }
   } catch (error) {
@@ -232,6 +240,7 @@ export async function deleteMechanic(id: string): Promise<ApiResponse<void>> {
       },
     })
 
+    await invalidateCache(tenantId, "mechanics")
     revalidatePath("/workspace/[tenantSlug]/mechanics", "page")
     return { success: true }
   } catch (error) {
